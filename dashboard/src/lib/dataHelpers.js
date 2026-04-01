@@ -7,7 +7,7 @@ export function getBaselineSummary(data) {
 }
 
 export function getReformSummary(data) {
-  return data?.reform?.nics_exemption?.summary || null;
+  return data?.reform?.nics_exemption?.static || null;
 }
 
 export function getNicsExemption(data) {

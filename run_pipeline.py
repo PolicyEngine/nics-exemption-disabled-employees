@@ -426,13 +426,324 @@ pct_active_by_age = (
     .mean()
 )
 
-# ── Step 9: Write results JSON ─────────────────────────────────────────
-
-print("\nStep 9: Writing results JSON...")
-
+# Pre-compute these for use in behavioural model and JSON output
 total_nics = float(efrs_mdf.ni_employer.sum() / 1e9)
 nics_recently_active = float(nics_by_status.get(True, 0))
 nics_not_recently_active = float(nics_by_status.get(False, 0))
+
+# ── Step 9: Behavioural model — labour supply response ────────────────
+
+print("\nStep 9: Behavioural model — labour supply response...")
+
+# Full pass-through assumption: employer NICs saving is passed to the
+# worker as higher wages.  For each inactive person we:
+#   1. Impute a potential wage (median by age band × gender from employed pop)
+#   2. Calculate the employer NICs on that wage (= the saving under exemption)
+#   3. With full pass-through the worker's gross wage rises by that amount
+#   4. Compute % change in household net income if they took the job
+#   5. Apply extensive-margin participation elasticity → P(enter work)
+
+_person_pop = baseline.populations["person"]
+hh_net_income = _person_pop.household("household_net_income", YEAR).astype(float)
+
+# 9a — impute potential wages for inactive people from employed distribution
+emp_income = baseline.calculate("employment_income", YEAR).values.astype(float)
+gender_arr = baseline.calculate("gender", YEAR).values
+
+_age_bands = [(16, 24), (25, 34), (35, 49), (50, 64)]
+_median_wages = {}
+for lo, hi in _age_bands:
+    for g in ["MALE", "FEMALE"]:
+        m = is_employed & (age >= lo) & (age <= hi) & (gender_arr == g)
+        if m.sum() > 0:
+            wages_subset = emp_income[m]
+            w_subset = person_weights.values[m]
+            # weighted median
+            sorted_idx = np.argsort(wages_subset)
+            cum_w = np.cumsum(w_subset[sorted_idx])
+            median_wage = wages_subset[sorted_idx][cum_w >= cum_w[-1] / 2][0]
+            _median_wages[(lo, hi, g)] = max(float(median_wage), 0)
+        else:
+            _median_wages[(lo, hi, g)] = 15000.0  # fallback
+
+potential_wage = np.zeros(len(age), dtype=float)
+for lo, hi in _age_bands:
+    for g in ["MALE", "FEMALE"]:
+        m = is_inactive & (age >= lo) & (age <= hi) & (gender_arr == g)
+        potential_wage[m] = _median_wages[(lo, hi, g)]
+
+# 9b — employer NICs on potential wage (15% above £5,000 secondary threshold)
+NICS_RATE = 0.15
+SECONDARY_THRESHOLD = 5000.0
+potential_nics = np.maximum(potential_wage - SECONDARY_THRESHOLD, 0) * NICS_RATE
+
+# With full pass-through: worker gets wage + nics saving
+potential_gross_with_exemption = potential_wage + potential_nics
+
+# 9c — marginal % change in net income from the NICs exemption only
+# The elasticity must be applied to the POLICY effect (the NICs saving),
+# not the total income gain from going inactive to employed.
+# Without the exemption, an inactive person could work and earn potential_wage.
+# With the exemption, they earn potential_wage + potential_nics (employer saving passed through).
+# The marginal gain from the policy = potential_nics (the NICs saving).
+# We express this as a % of net income if working WITHOUT the exemption.
+EFFECTIVE_MARGINAL_RATE = 0.40
+net_nics_saving = potential_nics * (1 - EFFECTIVE_MARGINAL_RATE)
+net_income_if_working = hh_net_income + potential_wage * (1 - EFFECTIVE_MARGINAL_RATE)
+pct_change_income = np.where(
+    net_income_if_working > 0,
+    net_nics_saving / net_income_if_working,
+    0.0,
+)
+# Only for inactive working-age people
+pct_change_income = np.where(is_inactive, pct_change_income, 0.0)
+
+# 9d — participation elasticity
+# Literature range 0.1–0.5 for inactive populations; use 0.25 as central estimate
+# Sensitivity: also compute at 0.1 (low) and 0.4 (high)
+ELASTICITIES = {"low": 0.10, "central": 0.25, "high": 0.40}
+
+behavioural_results = {}
+for label, elast in ELASTICITIES.items():
+    prob_enter = np.clip(elast * pct_change_income, 0, 1)
+    # Weight and sum
+    n_new_entrants = float(MicroSeries(
+        (prob_enter * is_inactive).astype(float), weights=person_weights
+    ).sum())
+    # Additional NICs revenue from new entrants (they now pay NICs on their wage)
+    # But they're exempt! So no new NICs from them — the gain is in income tax + less benefits
+    # Fiscal offset: income tax + NI employee + reduced benefit spending
+    tax_revenue_gain = float(MicroSeries(
+        (prob_enter * is_inactive * potential_wage * EFFECTIVE_MARGINAL_RATE).astype(float),
+        weights=person_weights,
+    ).sum()) / 1e9
+
+    # By age group
+    by_age_behav = []
+    for lo, hi, age_label in [(16, 24, "16-24"), (25, 34, "25-34"),
+                               (35, 49, "35-49"), (50, 64, "50-64")]:
+        m = is_inactive & (age >= lo) & (age <= hi)
+        n = float(MicroSeries((prob_enter * m).astype(float), weights=person_weights).sum())
+        by_age_behav.append({"age_group": age_label, "n_new_entrants": round(n)})
+
+    # NEETs: 16-24, inactive and not in education
+    is_student = np.isin(employment_status, ["STUDENT"])
+    is_neet = is_inactive & (age >= 16) & (age <= 24) & ~is_student
+    n_neets = float(MicroSeries(is_neet.astype(float), weights=person_weights).sum())
+    n_neets_entering = float(MicroSeries(
+        (prob_enter * is_neet).astype(float), weights=person_weights
+    ).sum())
+
+    behavioural_results[label] = {
+        "elasticity": elast,
+        "n_new_entrants": round(n_new_entrants),
+        "fiscal_offset_bn": round(tax_revenue_gain, 2),
+        "net_cost_bn": round(nics_recently_active - tax_revenue_gain, 2),
+        "by_age": by_age_behav,
+        "n_neets_baseline": round(n_neets),
+        "n_neets_entering_work": round(n_neets_entering),
+    }
+    print(f"  Elasticity {elast}: {n_new_entrants:,.0f} new entrants, "
+          f"fiscal offset £{tax_revenue_gain:.2f}bn, "
+          f"net cost £{nics_recently_active - tax_revenue_gain:.2f}bn")
+
+# 9e — Poverty impact
+print("\nStep 9e: Poverty impact...")
+poverty_bhc = _person_pop.household("in_poverty_bhc", YEAR).astype(float)
+n_in_poverty_baseline = float(MicroSeries(
+    (poverty_bhc * working_age).astype(float), weights=person_weights
+).sum())
+poverty_rate_baseline = round(n_in_poverty_baseline / float(
+    MicroSeries(working_age.astype(float), weights=person_weights).sum()
+) * 100, 1)
+
+poverty_line = _person_pop.household("poverty_line_bhc", YEAR).astype(float)
+poverty_gap = np.maximum(poverty_line - hh_net_income, 0)
+
+# --- Static poverty impact ---
+# For already-employed recently-active workers: if the employer NICs saving
+# is passed through as higher wages, does it close their poverty gap?
+is_recent = efrs_imp.joined_labour_force_recently.values > 0.5
+nics_saving_per_person = ni_employer.values.astype(float)  # their actual employer NICs
+static_net_gain = nics_saving_per_person * (1 - EFFECTIVE_MARGINAL_RATE)
+static_lifted = (is_recent & working_age & poverty_bhc.astype(bool) &
+                 (static_net_gain > poverty_gap)).astype(float)
+n_lifted_static = float(MicroSeries(static_lifted, weights=person_weights).sum())
+print(f"  Static poverty reduction: {n_lifted_static:,.0f} people lifted out")
+
+static_poverty_impact = {
+    "n_lifted_out_of_poverty": round(n_lifted_static),
+}
+
+# --- Behavioural poverty impact ---
+# For central elasticity: inactive people entering work gain their full wage (net of tax)
+# If that net wage gain > poverty_gap, they exit poverty
+net_gain_if_working = potential_gross_with_exemption * (1 - EFFECTIVE_MARGINAL_RATE)
+
+central_prob = np.clip(ELASTICITIES["central"] * pct_change_income, 0, 1)
+# People lifted out of poverty: inactive, in poverty, and net wage gain > poverty_gap
+lifted_out = (central_prob * is_inactive * poverty_bhc *
+              (net_gain_if_working > poverty_gap)).astype(float)
+n_lifted_out = float(MicroSeries(lifted_out, weights=person_weights).sum())
+# Also count household members lifted out (approximate: multiply by avg hh size for poor)
+# For simplicity, report individual-level only
+poverty_rate_reform = round(
+    (n_in_poverty_baseline - n_lifted_out) / float(
+        MicroSeries(working_age.astype(float), weights=person_weights).sum()
+    ) * 100, 1
+)
+
+print(f"  Working-age poverty rate: {poverty_rate_baseline}% → {poverty_rate_reform}%")
+print(f"  People lifted out of poverty (behavioural): {n_lifted_out:,.0f}")
+
+poverty_impact = {
+    "poverty_rate_baseline_pct": poverty_rate_baseline,
+    "poverty_rate_reform_pct": poverty_rate_reform,
+    "n_lifted_out_of_poverty": round(n_lifted_out),
+}
+
+# ── Step 10: Counterfactual — disability benefit cuts ─────────────────
+
+print("\nStep 10: Counterfactual — disability benefit cuts...")
+
+# Model the government's proposed disability benefit reforms:
+# Approximate as a 10% cut to PIP/DLA for working-age recipients
+# (Spring Statement 2025 proposed ~£4.7bn savings over forecast period)
+CUT_RATE = 0.10  # 10% reduction in PIP/DLA
+pip_person = baseline.calculate("pip", YEAR).values.astype(float)
+dla_person = baseline.calculate("dla", YEAR).values.astype(float)
+benefit_loss = (pip_person + dla_person) * CUT_RATE  # annual loss per person
+
+# This reduces household net income → negative income effect
+# Some may be forced to seek work (income effect on participation)
+pct_change_cf = np.where(
+    hh_net_income > 0,
+    -benefit_loss / hh_net_income,
+    0.0,
+)
+# Income effect: lower income → may need to work (positive participation response
+# to income loss). Use same elasticity framework but note the sign:
+# A negative income shock with positive participation elasticity means people
+# are pushed into the labour market.
+# The income effect elasticity for benefit cuts is typically lower (~0.1-0.2)
+BENEFIT_CUT_ELAST = 0.15
+
+# Only disabled inactive people affected
+is_disabled_inactive = is_inactive & is_disabled_broad & working_age
+prob_enter_cf = np.clip(BENEFIT_CUT_ELAST * np.abs(pct_change_cf), 0, 1)
+prob_enter_cf = np.where(is_disabled_inactive, prob_enter_cf, 0.0)
+
+n_entering_cf = float(MicroSeries(
+    prob_enter_cf.astype(float), weights=person_weights
+).sum())
+fiscal_saving_cf = float(MicroSeries(
+    (benefit_loss * working_age).astype(float), weights=person_weights
+).sum()) / 1e9
+
+# Poverty impact of benefit cuts (people losing income → more poverty)
+benefit_cut_pushes_into_poverty = (
+    ~poverty_bhc.astype(bool) & is_disabled_broad & working_age &
+    ((hh_net_income - benefit_loss) < poverty_line)
+).astype(float)
+n_pushed_into_poverty = float(MicroSeries(
+    benefit_cut_pushes_into_poverty, weights=person_weights
+).sum())
+
+print(f"  Benefit cut fiscal saving: £{fiscal_saving_cf:.2f}bn")
+print(f"  People entering work (income effect): {n_entering_cf:,.0f}")
+print(f"  People pushed into poverty: {n_pushed_into_poverty:,.0f}")
+
+counterfactual = {
+    "name": "Disability benefit cuts (10% PIP/DLA reduction)",
+    "cut_rate_pct": CUT_RATE * 100,
+    "fiscal_saving_bn": round(fiscal_saving_cf, 2),
+    "n_entering_work": round(n_entering_cf),
+    "n_pushed_into_poverty": round(n_pushed_into_poverty),
+}
+
+# ── Step 11: Income decile breakdown ──────────────────────────────────
+
+print("\nStep 11: Income decile breakdown...")
+equiv_hh_income = _person_pop.household("equiv_household_net_income", YEAR).astype(float)
+
+# Compute deciles from the working-age population
+wa_incomes = equiv_hh_income[working_age]
+wa_weights_arr = person_weights.values[working_age]
+sorted_idx = np.argsort(wa_incomes)
+cum_w = np.cumsum(wa_weights_arr[sorted_idx])
+total_w = cum_w[-1]
+decile_thresholds = [wa_incomes[sorted_idx][cum_w >= total_w * d / 10][0] for d in range(1, 10)]
+
+# Assign deciles to all people (1-indexed: 1=poorest, 10=richest)
+decile = np.digitize(equiv_hh_income, decile_thresholds, right=True) + 1
+decile = np.clip(decile, 1, 10)
+
+by_income_decile = []
+for d in range(1, 11):
+    m = (decile == d) & is_inactive & working_age
+    n_inactive_d = float(MicroSeries(m.astype(float), weights=person_weights).sum())
+    n_entering_d = float(MicroSeries(
+        (central_prob * m).astype(float), weights=person_weights
+    ).sum())
+    by_income_decile.append({
+        "decile": d,
+        "n_inactive": round(n_inactive_d),
+        "n_entering_work": round(n_entering_d),
+    })
+    if d in [1, 5, 10]:
+        print(f"  Decile {d}: {n_inactive_d:,.0f} inactive, {n_entering_d:,.0f} entering work")
+
+# Also build static breakdowns by income and wealth decile (for the detailed table)
+def _build_decile_breakdown(decile_arr, label_prefix):
+    rows = []
+    for d in range(1, 11):
+        m = (decile_arr == d) & is_working_age
+        m_recent = m & is_recent
+        n_recent = float(MicroSeries(m_recent.astype(float), weights=person_weights).sum())
+        nics_cost = float(
+            MicroSeries(efrs_imp.ni_employer.values * m_recent, weights=person_weights).sum() / 1e9
+        )
+        rows.append({
+            "group": str(d),
+            "n_recently_active": round(n_recent),
+            "nics_exemption_cost_bn": round(nics_cost, 2),
+        })
+    return rows
+
+by_income_decile_static = _build_decile_breakdown(decile, "Decile")
+
+# Wealth decile
+print("\nStep 11b: Wealth decile breakdown...")
+total_wealth = _person_pop.household("total_wealth", YEAR).astype(float)
+wa_wealth = total_wealth[working_age]
+sorted_w_idx = np.argsort(wa_wealth)
+cum_ww = np.cumsum(wa_weights_arr[sorted_w_idx])
+total_ww = cum_ww[-1]
+wealth_thresholds = [wa_wealth[sorted_w_idx][cum_ww >= total_ww * d / 10][0] for d in range(1, 10)]
+
+wealth_decile = np.digitize(total_wealth, wealth_thresholds, right=True) + 1
+wealth_decile = np.clip(wealth_decile, 1, 10)
+
+by_wealth_decile_static = _build_decile_breakdown(wealth_decile, "Decile")
+
+by_wealth_decile_behav = []
+for d in range(1, 11):
+    m = (wealth_decile == d) & is_inactive & working_age
+    n_inactive_d = float(MicroSeries(m.astype(float), weights=person_weights).sum())
+    n_entering_d = float(MicroSeries(
+        (central_prob * m).astype(float), weights=person_weights
+    ).sum())
+    by_wealth_decile_behav.append({
+        "decile": d,
+        "n_inactive": round(n_inactive_d),
+        "n_entering_work": round(n_entering_d),
+    })
+    if d in [1, 5, 10]:
+        print(f"  Wealth decile {d}: {n_inactive_d:,.0f} inactive, {n_entering_d:,.0f} entering work")
+
+# ── Step 12: Write results JSON ───────────────────────────────────────
+
+print("\nStep 12: Writing results JSON...")
 
 output = {
     "year": YEAR,
@@ -452,6 +763,10 @@ output = {
         "by_age": age_data,
         "inactivity_reasons": inactivity_reasons,
         "by_region": [],
+        "poverty": {
+            "rate_pct": poverty_rate_baseline,
+            "n_in_poverty": round(n_in_poverty_baseline),
+        },
     },
     "nics_exemption": {
         "total_employer_nics_bn": round(total_nics, 1),
@@ -460,10 +775,13 @@ output = {
     },
     "reform": {
         "nics_exemption": {
-            "summary": {
+            "static": {
                 "cost_bn": round(nics_recently_active, 1),
                 "avg_nics_per_recent_worker": avg_nics_per_recent,
+                "poverty_impact": static_poverty_impact,
             },
+            "behavioural": behavioural_results,
+            "poverty_impact": poverty_impact,
             "by_age": [
                 {
                     "age_group": d["age_group"],
@@ -475,7 +793,12 @@ output = {
             "by_gender": by_gender,
             "by_country": by_country,
             "by_family_type": by_family,
+            "by_income_decile": by_income_decile_static,
+            "by_wealth_decile": by_wealth_decile_static,
+            "by_income_decile_behavioural": by_income_decile,
+            "by_wealth_decile_behavioural": by_wealth_decile_behav,
         },
+        "counterfactual_benefit_cuts": counterfactual,
     },
     "pct_active_by_age_lfs": {
         str(int(k)): round(float(v), 4)

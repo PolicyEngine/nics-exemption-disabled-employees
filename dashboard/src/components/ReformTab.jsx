@@ -16,7 +16,6 @@ import {
   getReformSummary,
   getNicsExemption,
   getByAgeGroup,
-  getCombinedPctActiveByAge,
 } from "../lib/dataHelpers";
 import { formatBn, formatCount, formatPct } from "../lib/formatters";
 import ChartLogo from "./ChartLogo";
@@ -51,12 +50,83 @@ function CustomTooltip({ active, payload, label, formatter }) {
   );
 }
 
+function DecileCharts({ data, dimension }) {
+  const dimData = data?.reform?.nics_exemption?.[`by_${dimension}`] || [];
+  if (!dimData.length) {
+    return <p className="text-sm text-slate-500">Decile data not yet available. Re-run the pipeline to generate.</p>;
+  }
+  const label = dimension === "income_decile" ? "Income decile" : "Wealth decile";
+  return (
+    <div className="grid gap-8 xl:grid-cols-2">
+      <div>
+        <SectionHeading
+          title={`Recently active within 5Q by ${label.toLowerCase()}`}
+          description=""
+        />
+        <div className="h-[340px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={dimData}>
+              <CartesianGrid strokeDasharray="3 3" stroke={colors.border.light} />
+              <XAxis dataKey="group" tick={{ ...AXIS_STYLE, fontSize: 11 }} tickLine={false} />
+              <YAxis tick={AXIS_STYLE} tickLine={false} axisLine={false} tickFormatter={(v) => formatCount(v)} />
+              <Tooltip content={<CustomTooltip formatter={(v) => formatCount(v)} />} />
+              <Bar dataKey="n_recently_active" name="Active within 5Q" fill={colors.primary[600]} radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <ChartLogo />
+      </div>
+      <div>
+        <SectionHeading
+          title={`Exemption cost by ${label.toLowerCase()}`}
+          description=""
+        />
+        <div className="h-[340px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={dimData}>
+              <CartesianGrid strokeDasharray="3 3" stroke={colors.border.light} />
+              <XAxis dataKey="group" tick={{ ...AXIS_STYLE, fontSize: 11 }} tickLine={false} />
+              <YAxis tick={AXIS_STYLE} tickLine={false} axisLine={false} tickFormatter={(v) => `\u00A3${v}bn`} />
+              <Tooltip content={<CustomTooltip formatter={(v) => formatBn(v)} />} />
+              <Bar dataKey="nics_exemption_cost_bn" name="Exemption cost" fill={colors.primary[700]} radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <ChartLogo />
+      </div>
+    </div>
+  );
+}
+
+function CaveatsToggle() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-2">
+      <button
+        className="text-sm font-semibold text-slate-700 underline decoration-dotted underline-offset-2 hover:text-slate-900"
+        onClick={() => setOpen(!open)}
+      >
+        Caveats {open ? "▾" : "▸"}
+      </button>
+      {open && (
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          We assume full pass-through of the NICs saving to wages; the OBR assumes only 60–76% is passed through, so these estimates are an upper bound. Many inactive people also face health, accessibility, and skills barriers that financial incentives alone will not overcome, and the model does not account for deadweight, substitution, or displacement effects.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function BreakdownTable({ dimension, byAge, data, totalRecentlyActive, costBn }) {
   const dimData = useMemo(() => {
-    if (dimension === "age") return null; // use byAge directly
+    if (dimension === "age" || dimension === "income_decile" || dimension === "wealth_decile") return null;
     const key = `by_${dimension}`;
     return data?.reform?.nics_exemption?.[key] || [];
   }, [dimension, data]);
+
+  if (dimension === "income_decile" || dimension === "wealth_decile") {
+    return <DecileCharts data={data} dimension={dimension} />;
+  }
 
   if (dimension === "age") {
     return (
@@ -81,11 +151,6 @@ function BreakdownTable({ dimension, byAge, data, totalRecentlyActive, costBn })
               <td style={{ textAlign: "right" }}>{formatBn(row.nics_exemption_cost_bn)}</td>
             </tr>
           ))}
-          <tr className="border-t-2 border-slate-300 font-semibold">
-            <td>Total</td>
-            <td style={{ textAlign: "right" }}>{formatCount(totalRecentlyActive)}</td>
-            <td style={{ textAlign: "right" }}>{costBn != null ? formatBn(costBn) : "--"}</td>
-          </tr>
         </tbody>
       </table>
     );
@@ -95,9 +160,9 @@ function BreakdownTable({ dimension, byAge, data, totalRecentlyActive, costBn })
     return <p className="text-sm text-slate-500">Breakdown data not yet available. Re-run the pipeline to generate.</p>;
   }
 
-  const dimLabel = dimension === "gender" ? "Gender" : dimension === "country" ? "Country" : "Household type";
-  const totalActive = dimData.reduce((s, r) => s + (r.n_recently_active || 0), 0);
-  const totalCost = dimData.reduce((s, r) => s + (r.nics_exemption_cost_bn || 0), 0);
+  const dimLabel = dimension === "gender" ? "Gender"
+    : dimension === "country" ? "Country"
+    : "Household type";
 
   return (
     <table className="data-table" style={{ tableLayout: "fixed" }}>
@@ -121,11 +186,6 @@ function BreakdownTable({ dimension, byAge, data, totalRecentlyActive, costBn })
             <td style={{ textAlign: "right" }}>{formatBn(row.nics_exemption_cost_bn)}</td>
           </tr>
         ))}
-        <tr className="border-t-2 border-slate-300 font-semibold">
-          <td>Total</td>
-          <td style={{ textAlign: "right" }}>{formatCount(totalActive)}</td>
-          <td style={{ textAlign: "right" }}>{formatBn(totalCost)}</td>
-        </tr>
       </tbody>
     </table>
   );
@@ -135,9 +195,16 @@ export default function ReformTab({ data }) {
   const summary = getReformSummary(data);
   const nicsExemption = getNicsExemption(data);
   const byAge = getByAgeGroup(data, "reform");
-  const combinedPctActive = getCombinedPctActiveByAge(data);
+  const behavioural = data?.reform?.nics_exemption?.behavioural || {};
+  const central = behavioural.central || {};
+  const povertyImpact = data?.reform?.nics_exemption?.poverty_impact || {};
+  const counterfactual = data?.reform?.counterfactual_benefit_cuts || {};
+  const byDecileBehav = data?.reform?.nics_exemption?.by_income_decile_behavioural || [];
+  const byWealthDecileBehav = data?.reform?.nics_exemption?.by_wealth_decile_behavioural || [];
+  const nInactive = data?.baseline?.summary?.n_economically_inactive || 0;
 
   const [breakdownDim, setBreakdownDim] = useState("age");
+  const [behaviouralDim, setBehaviouralDim] = useState("age");
 
   const totalRecentlyActive = useMemo(() => {
     return byAge
@@ -152,7 +219,9 @@ export default function ReformTab({ data }) {
         description={<>Estimated cost of exempting employers from NICs on employees who transitioned from economic inactivity into work within the last 5 quarters (15 months). Figures are based on PolicyEngine UK microsimulation with <a href="https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/methodologies/labourforcesurveyuserguidance" target="_blank" rel="noreferrer" className="underline">LFS longitudinal data</a> imputed onto the Enhanced FRS.</>}
       />
 
-      {/* Summary metric cards */}
+      {/* ================================================================ */}
+      {/* STATIC COST — METRIC CARDS                                       */}
+      {/* ================================================================ */}
       <div className="grid gap-4 md:grid-cols-3">
         <div className="metric-card">
           <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
@@ -167,7 +236,7 @@ export default function ReformTab({ data }) {
         </div>
         <div className="metric-card">
           <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
-            Recently-active employees (5Q)
+            Static: recently-active employees (5Q)
           </div>
           <div className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
             {totalRecentlyActive > 0 ? formatCount(totalRecentlyActive) : "--"}
@@ -177,175 +246,32 @@ export default function ReformTab({ data }) {
             <a href="https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/datasets/labourforcesurveyflowsestimatesx02" target="_blank" rel="noreferrer" className="underline">
               ONS X02 flows
             </a>{" "}
-            shows 578k moving from inactivity to employment per quarter (Oct–Dec 2025)
+            shows 578k moving from inactivity to employment per quarter (Oct{"\u2013"}Dec 2025)
           </div>
         </div>
         <div className="metric-card">
           <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
-            Avg saving per exempt hire
+            Static: avg saving per exempt hire
           </div>
           <div className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-            {data?.reform?.nics_exemption?.summary?.avg_nics_per_recent_worker != null
-              ? `\u00A3${data.reform.nics_exemption.summary.avg_nics_per_recent_worker.toLocaleString()}`
+            {summary?.avg_nics_per_recent_worker != null
+              ? `\u00A3${summary.avg_nics_per_recent_worker.toLocaleString()}`
               : "--"}
           </div>
           <div className="mt-2 text-sm text-slate-500">
-            Average annual employer NICs per recently-active worker (vs £{data?.baseline?.summary?.avg_nics_per_worker?.toLocaleString() ?? "--"} across all employees)
+            Average annual employer NICs per recently-active worker (vs {"\u00A3"}{data?.baseline?.summary?.avg_nics_per_worker?.toLocaleString() ?? "--"} across all employees)
           </div>
         </div>
       </div>
 
       {/* ================================================================ */}
-      {/* SECTION 1: EXEMPTION COST BY AGE                                 */}
-      {/* ================================================================ */}
-      <SectionHeading
-        title="Exemption cost by age group"
-        description="Employer NICs that would be foregone under the exemption, broken down by age group of the employee who became active within the last 5 quarters (15 months)."
-      />
-
-      {byAge.length > 0 ? (
-        <div className="section-card">
-          <SectionHeading
-            title="NICs exemption cost by age"
-            description="Estimated annual cost (£bn) of exempting employer NICs for workers who became active within the last 5 quarters."
-          />
-          <div className="h-[380px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={byAge}>
-                <CartesianGrid strokeDasharray="3 3" stroke={colors.border.light} />
-                <XAxis
-                  dataKey="age_group"
-                  tick={AXIS_STYLE}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={AXIS_STYLE}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v) => `£${v}bn`}
-                />
-                <Tooltip content={<CustomTooltip formatter={(v) => formatBn(v)} />} />
-                <Bar
-                  dataKey="nics_exemption_cost_bn"
-                  name="Exemption cost"
-                  fill={colors.primary[600]}
-                  radius={[6, 6, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <ChartLogo />
-        </div>
-      ) : (
-        <div className="section-card">
-          <p className="text-sm text-slate-500">Age group data not yet available.</p>
-        </div>
-      )}
-
-      {/* ================================================================ */}
-      {/* SECTION 2: % BECOMING ACTIVE BY AGE (key charts from notebook)   */}
-      {/* ================================================================ */}
-      <div className="border-t border-slate-200 pt-10">
-        <SectionHeading
-          title="Percentage becoming economically active within 5 quarters, by age"
-          description={<>The left chart shows the raw <a href="https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/methodologies/labourforcesurveyuserguidance" target="_blank" rel="noreferrer" className="underline">Labour Force Survey</a> 5-quarter longitudinal panel data; the right shows the same variable after imputation onto the PolicyEngine Enhanced FRS population.</>}
-        />
-      </div>
-
-      {combinedPctActive.length > 0 ? (
-        <div className="grid gap-8 xl:grid-cols-2">
-          <div className="section-card">
-            <SectionHeading
-              title="LFS: % becoming active by age (5-quarter window)"
-              description="Percentage of people who became economically active in the last 5 quarters, by age (raw LFS weighted data)."
-            />
-            <div className="h-[400px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={combinedPctActive}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={colors.border.light} />
-                  <XAxis
-                    dataKey="age"
-                    tick={AXIS_STYLE}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={AXIS_STYLE}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(v) => `${(v * 100).toFixed(0)}%`}
-                  />
-                  <Tooltip
-                    content={
-                      <CustomTooltip
-                        formatter={(v) => v != null ? `${(v * 100).toFixed(1)}%` : "N/A"}
-                      />
-                    }
-                  />
-                  <Bar
-                    dataKey="lfs"
-                    name="% becoming active (LFS)"
-                    fill={colors.primary[600]}
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <ChartLogo />
-          </div>
-
-          <div className="section-card">
-            <SectionHeading
-              title="Imputed: recently-active in Enhanced FRS (5-quarter window)"
-              description="Imputed probability of becoming active within 5 quarters, after statistical matching from LFS onto the PolicyEngine population."
-            />
-            <div className="h-[400px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={combinedPctActive}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={colors.border.light} />
-                  <XAxis
-                    dataKey="age"
-                    tick={AXIS_STYLE}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={AXIS_STYLE}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(v) => `${(v * 100).toFixed(0)}%`}
-                  />
-                  <Tooltip
-                    content={
-                      <CustomTooltip
-                        formatter={(v) => v != null ? `${(v * 100).toFixed(1)}%` : "N/A"}
-                      />
-                    }
-                  />
-                  <Bar
-                    dataKey="frs"
-                    name="% becoming active (imputed)"
-                    fill={colors.primary[700]}
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <ChartLogo />
-          </div>
-        </div>
-      ) : (
-        <div className="section-card">
-          <p className="text-sm text-slate-500">Activity-by-age data not yet available.</p>
-        </div>
-      )}
-
-      {/* ================================================================ */}
-      {/* SECTION 3: DETAILED BREAKDOWN TABLE                              */}
+      {/* DETAILED BREAKDOWN TABLE (STATIC)                                */}
       {/* ================================================================ */}
       {byAge.length > 0 && (
         <>
-          <div className="border-t border-slate-200 pt-10">
+          <div className="pt-10">
             <SectionHeading
-              title="Detailed breakdown"
+              title="Detailed breakdown (static)"
               description="Summary table of the NICs exemption cost and workers who became active within 5 quarters, by selected dimension."
             />
           </div>
@@ -357,6 +283,8 @@ export default function ReformTab({ data }) {
                 { id: "gender", label: "Gender" },
                 { id: "country", label: "Country" },
                 { id: "family_type", label: "Household type" },
+                { id: "income_decile", label: "Income decile" },
+                { id: "wealth_decile", label: "Wealth decile" },
               ].map((opt) => (
                 <button
                   key={opt.id}
@@ -379,6 +307,264 @@ export default function ReformTab({ data }) {
               totalRecentlyActive={totalRecentlyActive}
               costBn={summary?.cost_bn}
             />
+          </div>
+        </>
+      )}
+
+      {/* ================================================================ */}
+      {/* BEHAVIOURAL RESPONSE                                             */}
+      {/* ================================================================ */}
+      <div className="border-t border-slate-200 pt-10">
+        <SectionHeading
+          title="Behavioural impact (labour supply response)"
+          description={<>If employers pass the NICs saving on as higher wages, some currently inactive people would find it worthwhile to take a job. We estimate how many by applying participation elasticities from <a href="https://ifs.org.uk/publications/labour-supply-and-taxes" target="_blank" rel="noreferrer" className="underline">Meghir &amp; Phillips (2010)</a>. For each inactive person we impute a potential wage (weighted median of employed people in the same age band and gender from the FRS), calculate the NICs saving their employer would receive, assume this is passed through as higher pay, and then estimate the probability they enter work based on how much their net income rises. The fiscal offset captures the extra income tax paid and benefits no longer claimed by these new workers.</>}
+        />
+        <CaveatsToggle />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <div className="metric-card">
+          <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
+            New entrants (central)
+          </div>
+          <div className="mt-2 text-3xl font-bold tracking-tight text-emerald-700">
+            {central.n_new_entrants ? formatCount(central.n_new_entrants) : "--"}
+          </div>
+          <div className="mt-2 text-sm text-slate-500">
+            {central.n_new_entrants && nInactive
+              ? `${(central.n_new_entrants / nInactive * 100).toFixed(1)}% of ${formatCount(nInactive)} inactive`
+              : "Inactive people entering work"}
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
+            Fiscal offset
+          </div>
+          <div className="mt-2 text-3xl font-bold tracking-tight text-emerald-700">
+            {central.fiscal_offset_bn != null ? formatBn(central.fiscal_offset_bn) : "--"}
+          </div>
+          <div className="mt-2 text-sm text-slate-500">
+            Extra tax revenue + benefit savings from new workers
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
+            Net fiscal impact
+          </div>
+          <div className="mt-2 text-3xl font-bold tracking-tight text-emerald-700">
+            {central.net_cost_bn != null
+              ? `${central.net_cost_bn > 0 ? "-" : "+"}${formatBn(Math.abs(central.net_cost_bn))}`
+              : "--"}
+          </div>
+          <div className="mt-2 text-sm text-slate-500">
+            {summary?.cost_bn != null && central.fiscal_offset_bn != null
+              ? `${formatBn(summary.cost_bn)} static cost − ${formatBn(central.fiscal_offset_bn)} offset`
+              : "Static cost minus fiscal offset"}
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
+            Poverty reduction
+          </div>
+          <div className="mt-2 text-3xl font-bold tracking-tight text-emerald-700">
+            {povertyImpact.n_lifted_out_of_poverty
+              ? formatCount(povertyImpact.n_lifted_out_of_poverty)
+              : "--"}
+          </div>
+          <div className="mt-2 text-sm text-slate-500">
+            People lifted out of poverty (BHC)
+          </div>
+        </div>
+        {central.n_neets_baseline > 0 && (
+          <div className="metric-card">
+            <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
+              NEETs entering work
+            </div>
+            <div className="mt-2 text-3xl font-bold tracking-tight text-emerald-700">
+              {formatCount(central.n_neets_entering_work)}
+            </div>
+            <div className="mt-2 text-sm text-slate-500">
+              of {formatCount(central.n_neets_baseline)} NEETs aged 16–24 ({(central.n_neets_entering_work / central.n_neets_baseline * 100).toFixed(1)}%). NEETs are a subset of the 16–24 age group (excludes students)
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Sensitivity table */}
+      {Object.keys(behavioural).length > 0 && (
+        <div className="section-card overflow-x-auto">
+          <SectionHeading
+            title="Sensitivity to participation elasticity"
+            description="The elasticity measures how responsive inactive people are to higher pay. A higher elasticity means more people enter work for a given wage increase."
+          />
+          <table className="data-table" style={{ tableLayout: "fixed" }}>
+            <colgroup>
+              <col style={{ width: "20%" }} />
+              <col style={{ width: "20%" }} />
+              <col style={{ width: "20%" }} />
+              <col style={{ width: "20%" }} />
+              <col style={{ width: "20%" }} />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Scenario</th>
+                <th style={{ textAlign: "right" }}>Elasticity</th>
+                <th style={{ textAlign: "right" }}>New entrants</th>
+                <th style={{ textAlign: "right" }}>Fiscal offset</th>
+                <th style={{ textAlign: "right" }}>Net impact</th>
+              </tr>
+            </thead>
+            <tbody>
+              {["low", "central", "high"].map((key) => {
+                const row = behavioural[key];
+                if (!row) return null;
+                return (
+                  <tr key={key} className={key === "central" ? "bg-slate-50 font-semibold" : ""}>
+                    <td className="font-medium capitalize">{key}</td>
+                    <td style={{ textAlign: "right" }}>{row.elasticity}</td>
+                    <td style={{ textAlign: "right" }}>{formatCount(row.n_new_entrants)}</td>
+                    <td style={{ textAlign: "right" }}>{formatBn(row.fiscal_offset_bn)}</td>
+                    <td style={{ textAlign: "right" }}>
+                      {row.net_cost_bn > 0 ? "-" : "+"}{formatBn(Math.abs(row.net_cost_bn))}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+
+      {/* ================================================================ */}
+      {/* BEHAVIOURAL BREAKDOWN BY DIMENSION                               */}
+      {/* ================================================================ */}
+      <div className="section-card">
+        <SectionHeading
+          title="New entrants by dimension"
+          description="Estimated number of inactive people entering work under the exemption (central estimate), broken down by selected dimension."
+        />
+        <div className="mb-4 flex flex-wrap gap-2">
+          {[
+            { id: "age", label: "Age group" },
+            { id: "income_decile", label: "Income decile" },
+            { id: "wealth_decile", label: "Wealth decile" },
+          ].map((opt) => (
+            <button
+              key={opt.id}
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                behaviouralDim === opt.id
+                  ? "bg-primary-600 text-white"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+              onClick={() => setBehaviouralDim(opt.id)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {behaviouralDim === "age" && central.by_age && (
+          <div className="h-[380px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={central.by_age}>
+                <CartesianGrid strokeDasharray="3 3" stroke={colors.border.light} />
+                <XAxis dataKey="age_group" tick={AXIS_STYLE} tickLine={false} />
+                <YAxis tick={AXIS_STYLE} tickLine={false} axisLine={false} tickFormatter={(v) => formatCount(v)} />
+                <Tooltip content={<CustomTooltip formatter={(v) => formatCount(v)} />} />
+                <Bar dataKey="n_new_entrants" name="New entrants" fill={colors.primary[600]} radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {behaviouralDim === "income_decile" && byDecileBehav.length > 0 && (
+          <div className="h-[380px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={byDecileBehav}>
+                <CartesianGrid strokeDasharray="3 3" stroke={colors.border.light} />
+                <XAxis dataKey="decile" tick={AXIS_STYLE} tickLine={false} />
+                <YAxis tick={AXIS_STYLE} tickLine={false} axisLine={false} tickFormatter={(v) => formatCount(v)} />
+                <Tooltip content={<CustomTooltip formatter={(v) => formatCount(v)} />} />
+                <Bar dataKey="n_entering_work" name="New entrants" fill={colors.primary[600]} radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {behaviouralDim === "wealth_decile" && byWealthDecileBehav.length > 0 && (
+          <div className="h-[380px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={byWealthDecileBehav}>
+                <CartesianGrid strokeDasharray="3 3" stroke={colors.border.light} />
+                <XAxis dataKey="decile" tick={AXIS_STYLE} tickLine={false} />
+                <YAxis tick={AXIS_STYLE} tickLine={false} axisLine={false} tickFormatter={(v) => formatCount(v)} />
+                <Tooltip content={<CustomTooltip formatter={(v) => formatCount(v)} />} />
+                <Bar dataKey="n_entering_work" name="New entrants" fill={colors.primary[600]} radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        <ChartLogo />
+      </div>
+
+      {/* ================================================================ */}
+      {/* COUNTERFACTUAL: BENEFIT CUTS                                     */}
+      {/* ================================================================ */}
+      {counterfactual.name && (
+        <>
+          <div className="border-t border-slate-200 pt-10">
+            <SectionHeading
+              title="Comparison: NICs exemption vs disability benefit cuts"
+              description={<>The government&apos;s <a href="https://www.gov.uk/government/consultations/pathways-to-work-reforming-benefits-and-support-to-get-britain-working-green-paper/spring-statement-2025-health-and-disability-benefit-reforms-impacts" target="_blank" rel="noreferrer" className="underline">proposed disability benefit reforms</a> (PIP eligibility tightening, UC health element freeze, projected to save &pound;4.8bn by 2029/30) compared with the NICs exemption. We approximate the benefit cuts as a 10% reduction in PIP/DLA payments for modelling purposes. Both aim to increase employment among disabled/inactive people, but with very different outcomes.</>}
+            />
+          </div>
+
+          <div className="section-card overflow-x-auto">
+            <table className="data-table" style={{ tableLayout: "fixed" }}>
+              <colgroup>
+                <col style={{ width: "40%" }} />
+                <col style={{ width: "30%" }} />
+                <col style={{ width: "30%" }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Metric</th>
+                  <th style={{ textAlign: "right" }}>NICs exemption</th>
+                  <th style={{ textAlign: "right" }}>Benefit cuts</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="font-medium">People entering work</td>
+                  <td style={{ textAlign: "right" }} className="text-emerald-700 font-semibold">
+                    {formatCount(central.n_new_entrants)}
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    {formatCount(counterfactual.n_entering_work)}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="font-medium">Fiscal cost / saving</td>
+                  <td style={{ textAlign: "right" }} className="text-emerald-700 font-semibold">
+                    {formatBn(Math.abs(central.net_cost_bn))} cost
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    {formatBn(counterfactual.fiscal_saving_bn)} saving
+                  </td>
+                </tr>
+                <tr>
+                  <td className="font-medium">People lifted out of poverty</td>
+                  <td style={{ textAlign: "right" }} className="text-emerald-700 font-semibold">
+                    {formatCount(povertyImpact.n_lifted_out_of_poverty)}
+                  </td>
+                  <td style={{ textAlign: "right" }} className="text-red-600">
+                    {formatCount(counterfactual.n_pushed_into_poverty)} pushed in
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </>
       )}

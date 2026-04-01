@@ -81,7 +81,11 @@
         "count": 107156
       }
     ],
-    "by_region": []
+    "by_region": [],
+    "poverty": {
+      "rate_pct": 8.2,
+      "n_in_poverty": 3657610
+    }
   },
   "nics_exemption": {
     "total_employer_nics_bn": 151.3,
@@ -90,9 +94,97 @@
   },
   "reform": {
     "nics_exemption": {
-      "summary": {
+      "static": {
         "cost_bn": 3.5,
-        "avg_nics_per_recent_worker": 1153
+        "avg_nics_per_recent_worker": 1153,
+        "poverty_impact": {
+          "n_lifted_out_of_poverty": 17438
+        }
+      },
+      "behavioural": {
+        "low": {
+          "elasticity": 0.1,
+          "n_new_entrants": 28509,
+          "fiscal_offset_bn": 0.31,
+          "net_cost_bn": 3.14,
+          "by_age": [
+            {
+              "age_group": "16-24",
+              "n_new_entrants": 2268
+            },
+            {
+              "age_group": "25-34",
+              "n_new_entrants": 4931
+            },
+            {
+              "age_group": "35-49",
+              "n_new_entrants": 6471
+            },
+            {
+              "age_group": "50-64",
+              "n_new_entrants": 14838
+            }
+          ],
+          "n_neets_baseline": 439920,
+          "n_neets_entering_work": 1550
+        },
+        "central": {
+          "elasticity": 0.25,
+          "n_new_entrants": 71226,
+          "fiscal_offset_bn": 0.78,
+          "net_cost_bn": 2.67,
+          "by_age": [
+            {
+              "age_group": "16-24",
+              "n_new_entrants": 5670
+            },
+            {
+              "age_group": "25-34",
+              "n_new_entrants": 12327
+            },
+            {
+              "age_group": "35-49",
+              "n_new_entrants": 16163
+            },
+            {
+              "age_group": "50-64",
+              "n_new_entrants": 37066
+            }
+          ],
+          "n_neets_baseline": 439920,
+          "n_neets_entering_work": 3875
+        },
+        "high": {
+          "elasticity": 0.4,
+          "n_new_entrants": 113742,
+          "fiscal_offset_bn": 1.25,
+          "net_cost_bn": 2.2,
+          "by_age": [
+            {
+              "age_group": "16-24",
+              "n_new_entrants": 9072
+            },
+            {
+              "age_group": "25-34",
+              "n_new_entrants": 19708
+            },
+            {
+              "age_group": "35-49",
+              "n_new_entrants": 25829
+            },
+            {
+              "age_group": "50-64",
+              "n_new_entrants": 59133
+            }
+          ],
+          "n_neets_baseline": 439920,
+          "n_neets_entering_work": 6200
+        }
+      },
+      "poverty_impact": {
+        "poverty_rate_baseline_pct": 8.2,
+        "poverty_rate_reform_pct": 8.2,
+        "n_lifted_out_of_poverty": 25435
       },
       "by_age": [
         {
@@ -176,7 +268,222 @@
           "n_recently_active": 341061,
           "nics_exemption_cost_bn": 0.15
         }
+      ],
+      "by_income_decile": [
+        {
+          "group": "1",
+          "n_recently_active": 570519,
+          "nics_exemption_cost_bn": 0.08
+        },
+        {
+          "group": "2",
+          "n_recently_active": 235452,
+          "nics_exemption_cost_bn": 0.18
+        },
+        {
+          "group": "3",
+          "n_recently_active": 318281,
+          "nics_exemption_cost_bn": 0.17
+        },
+        {
+          "group": "4",
+          "n_recently_active": 368017,
+          "nics_exemption_cost_bn": 0.43
+        },
+        {
+          "group": "5",
+          "n_recently_active": 257581,
+          "nics_exemption_cost_bn": 0.37
+        },
+        {
+          "group": "6",
+          "n_recently_active": 271612,
+          "nics_exemption_cost_bn": 0.37
+        },
+        {
+          "group": "7",
+          "n_recently_active": 224318,
+          "nics_exemption_cost_bn": 0.33
+        },
+        {
+          "group": "8",
+          "n_recently_active": 291304,
+          "nics_exemption_cost_bn": 0.67
+        },
+        {
+          "group": "9",
+          "n_recently_active": 293745,
+          "nics_exemption_cost_bn": 0.63
+        },
+        {
+          "group": "10",
+          "n_recently_active": 140328,
+          "nics_exemption_cost_bn": 0.2
+        }
+      ],
+      "by_wealth_decile": [
+        {
+          "group": "1",
+          "n_recently_active": 446759,
+          "nics_exemption_cost_bn": 0.17
+        },
+        {
+          "group": "2",
+          "n_recently_active": 254927,
+          "nics_exemption_cost_bn": 0.49
+        },
+        {
+          "group": "3",
+          "n_recently_active": 287339,
+          "nics_exemption_cost_bn": 0.4
+        },
+        {
+          "group": "4",
+          "n_recently_active": 329209,
+          "nics_exemption_cost_bn": 0.35
+        },
+        {
+          "group": "5",
+          "n_recently_active": 297235,
+          "nics_exemption_cost_bn": 0.35
+        },
+        {
+          "group": "6",
+          "n_recently_active": 209172,
+          "nics_exemption_cost_bn": 0.4
+        },
+        {
+          "group": "7",
+          "n_recently_active": 210667,
+          "nics_exemption_cost_bn": 0.2
+        },
+        {
+          "group": "8",
+          "n_recently_active": 391294,
+          "nics_exemption_cost_bn": 0.73
+        },
+        {
+          "group": "9",
+          "n_recently_active": 315830,
+          "nics_exemption_cost_bn": 0.24
+        },
+        {
+          "group": "10",
+          "n_recently_active": 228725,
+          "nics_exemption_cost_bn": 0.1
+        }
+      ],
+      "by_income_decile_behavioural": [
+        {
+          "decile": 1,
+          "n_inactive": 1840334,
+          "n_entering_work": 29116
+        },
+        {
+          "decile": 2,
+          "n_inactive": 982764,
+          "n_entering_work": 9885
+        },
+        {
+          "decile": 3,
+          "n_inactive": 983765,
+          "n_entering_work": 9616
+        },
+        {
+          "decile": 4,
+          "n_inactive": 808090,
+          "n_entering_work": 6937
+        },
+        {
+          "decile": 5,
+          "n_inactive": 537059,
+          "n_entering_work": 3847
+        },
+        {
+          "decile": 6,
+          "n_inactive": 385426,
+          "n_entering_work": 2814
+        },
+        {
+          "decile": 7,
+          "n_inactive": 721659,
+          "n_entering_work": 5064
+        },
+        {
+          "decile": 8,
+          "n_inactive": 370451,
+          "n_entering_work": 2328
+        },
+        {
+          "decile": 9,
+          "n_inactive": 205906,
+          "n_entering_work": 845
+        },
+        {
+          "decile": 10,
+          "n_inactive": 280132,
+          "n_entering_work": 771
+        }
+      ],
+      "by_wealth_decile_behavioural": [
+        {
+          "decile": 1,
+          "n_inactive": 1825007,
+          "n_entering_work": 21837
+        },
+        {
+          "decile": 2,
+          "n_inactive": 588455,
+          "n_entering_work": 6755
+        },
+        {
+          "decile": 3,
+          "n_inactive": 642316,
+          "n_entering_work": 7794
+        },
+        {
+          "decile": 4,
+          "n_inactive": 452202,
+          "n_entering_work": 4644
+        },
+        {
+          "decile": 5,
+          "n_inactive": 385199,
+          "n_entering_work": 3832
+        },
+        {
+          "decile": 6,
+          "n_inactive": 281683,
+          "n_entering_work": 2443
+        },
+        {
+          "decile": 7,
+          "n_inactive": 715824,
+          "n_entering_work": 5815
+        },
+        {
+          "decile": 8,
+          "n_inactive": 627432,
+          "n_entering_work": 4876
+        },
+        {
+          "decile": 9,
+          "n_inactive": 482973,
+          "n_entering_work": 4028
+        },
+        {
+          "decile": 10,
+          "n_inactive": 1114494,
+          "n_entering_work": 9201
+        }
       ]
+    },
+    "counterfactual_benefit_cuts": {
+      "name": "Disability benefit cuts (10% PIP/DLA reduction)",
+      "cut_rate_pct": 10.0,
+      "fiscal_saving_bn": 2.32,
+      "n_entering_work": 7452,
+      "n_pushed_into_poverty": 13151
     }
   },
   "pct_active_by_age_lfs": {

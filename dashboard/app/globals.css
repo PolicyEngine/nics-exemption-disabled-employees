@@ -19,13 +19,11 @@
 
   a {
     color: var(--pe-color-primary-600);
-    text-decoration: none;
-    border-bottom: 1px solid var(--pe-color-primary-300);
-    transition: border-color 150ms ease;
+    transition: opacity 150ms ease;
   }
 
   a:hover {
-    border-bottom-color: var(--pe-color-primary-600);
+    opacity: 0.8;
   }
 }
 

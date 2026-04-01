@@ -12,7 +12,7 @@ import {
   YAxis,
 } from "recharts";
 import SectionHeading from "./SectionHeading";
-import { getBaselineSummary, getByAgeGroup, getInactivityReasons } from "../lib/dataHelpers";
+import { getBaselineSummary, getByAgeGroup, getInactivityReasons, getCombinedPctActiveByAge } from "../lib/dataHelpers";
 import { formatBn, formatCount, formatPct } from "../lib/formatters";
 import ChartLogo from "./ChartLogo";
 
@@ -100,6 +100,7 @@ export default function BaselineTab({ data }) {
   const summary = getBaselineSummary(data);
   const byAge = getByAgeGroup(data, "baseline");
   const inactivityReasons = getInactivityReasons(data);
+  const combinedPctActive = getCombinedPctActiveByAge(data);
 
   const sortedReasons = useMemo(() => {
     if (!inactivityReasons.length) return [];
@@ -328,7 +329,63 @@ export default function BaselineTab({ data }) {
       </div>
 
       {/* ================================================================ */}
-      {/* SECTION 3: MODEL VS OFFICIAL STATISTICS                          */}
+      {/* SECTION 3: INACTIVITY TRANSITIONS BY AGE                         */}
+      {/* ================================================================ */}
+      <div className="border-t border-slate-200 pt-10">
+        <SectionHeading
+          title="Percentage becoming economically active within 5 quarters, by age"
+          description={<>The left chart shows the raw <a href="https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/methodologies/labourforcesurveyuserguidance" target="_blank" rel="noreferrer" className="underline">Labour Force Survey</a> 5-quarter longitudinal panel data; the right shows the same variable after imputation onto the PolicyEngine Enhanced FRS population.</>}
+        />
+      </div>
+
+      {combinedPctActive.length > 0 ? (
+        <div className="grid gap-8 xl:grid-cols-2">
+          <div className="section-card">
+            <SectionHeading
+              title="LFS: % becoming active by age (5-quarter window)"
+              description="Percentage of people who became economically active in the last 5 quarters, by age (raw LFS weighted data)."
+            />
+            <div className="h-[400px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={combinedPctActive}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={colors.border.light} />
+                  <XAxis dataKey="age" tick={AXIS_STYLE} tickLine={false} />
+                  <YAxis tick={AXIS_STYLE} tickLine={false} axisLine={false} tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} />
+                  <Tooltip content={<CustomTooltip formatter={(v) => v != null ? `${(v * 100).toFixed(1)}%` : "N/A"} />} />
+                  <Bar dataKey="lfs" name="% becoming active (LFS)" fill={colors.primary[600]} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <ChartLogo />
+          </div>
+
+          <div className="section-card">
+            <SectionHeading
+              title="Imputed: recently-active in Enhanced FRS (5-quarter window)"
+              description="Imputed probability of becoming active within 5 quarters, after statistical matching from LFS onto the PolicyEngine population."
+            />
+            <div className="h-[400px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={combinedPctActive}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={colors.border.light} />
+                  <XAxis dataKey="age" tick={AXIS_STYLE} tickLine={false} />
+                  <YAxis tick={AXIS_STYLE} tickLine={false} axisLine={false} tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} />
+                  <Tooltip content={<CustomTooltip formatter={(v) => v != null ? `${(v * 100).toFixed(1)}%` : "N/A"} />} />
+                  <Bar dataKey="frs" name="% becoming active (imputed)" fill={colors.primary[700]} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <ChartLogo />
+          </div>
+        </div>
+      ) : (
+        <div className="section-card">
+          <p className="text-sm text-slate-500">Activity-by-age data not yet available.</p>
+        </div>
+      )}
+
+      {/* ================================================================ */}
+      {/* SECTION 4: MODEL VS OFFICIAL STATISTICS                          */}
       {/* ================================================================ */}
       <div className="border-t border-slate-200 pt-10">
         <SectionHeading

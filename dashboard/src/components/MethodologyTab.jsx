@@ -99,7 +99,7 @@ export default function MethodologyTab({ data }) {
           <code>nics_exemption_results.json</code>, which the dashboard consumes.
           All source code is in the{" "}
           <a
-            href="https://github.com/PolicyEngine/nics-exemption-disabled-employees"
+            href="https://github.com/PolicyEngine/nics-exemption-inactive-employees"
             target="_blank"
             rel="noreferrer"
             className="underline"

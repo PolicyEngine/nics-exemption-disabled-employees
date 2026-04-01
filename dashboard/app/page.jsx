@@ -125,11 +125,11 @@ function Dashboard() {
           <p>
             Replication code:{" "}
             <a
-              href="https://github.com/PolicyEngine/nics-exemption-disabled-employees"
+              href="https://github.com/PolicyEngine/nics-exemption-inactive-employees"
               target="_blank"
               rel="noreferrer"
             >
-              PolicyEngine/nics-exemption-disabled-employees
+              PolicyEngine/nics-exemption-inactive-employees
             </a>
             .
           </p>

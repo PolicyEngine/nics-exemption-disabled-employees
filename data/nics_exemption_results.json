@@ -307,12 +307,12 @@
         },
         {
           "group": "8",
-          "n_recently_active": 291304,
+          "n_recently_active": 291484,
           "nics_exemption_cost_bn": 0.67
         },
         {
           "group": "9",
-          "n_recently_active": 293745,
+          "n_recently_active": 293565,
           "nics_exemption_cost_bn": 0.63
         },
         {
@@ -416,7 +416,7 @@
         },
         {
           "decile": 9,
-          "n_inactive": 205906,
+          "n_inactive": 205905,
           "n_entering_work": 845
         },
         {
@@ -482,8 +482,9 @@
       "name": "Disability benefit cuts (10% PIP/DLA reduction)",
       "cut_rate_pct": 10.0,
       "fiscal_saving_bn": 2.32,
-      "n_entering_work": 7452,
-      "n_pushed_into_poverty": 13151
+      "n_entering_work": 9303,
+      "n_pushed_into_poverty": 8276,
+      "n_affected": 3178747
     }
   },
   "pct_active_by_age_lfs": {

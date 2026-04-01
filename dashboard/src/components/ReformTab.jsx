@@ -117,6 +117,65 @@ function CaveatsToggle() {
   );
 }
 
+function SensitivityToggle({ behavioural }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="section-card overflow-x-auto">
+      <button
+        className="flex w-full items-center justify-between text-left"
+        onClick={() => setOpen(!open)}
+      >
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900">
+            <span className="mr-2 text-slate-400">{open ? "▾" : "▸"}</span>
+            Sensitivity to participation elasticity
+          </h3>
+          <p className="mt-1 text-sm text-slate-500">
+            The elasticity measures how responsive inactive people are to higher pay. A higher elasticity means more people enter work for a given wage increase.
+          </p>
+        </div>
+      </button>
+      {open && (
+        <table className="data-table mt-4" style={{ tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "20%" }} />
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Scenario</th>
+              <th style={{ textAlign: "right" }}>Elasticity</th>
+              <th style={{ textAlign: "right" }}>New entrants</th>
+              <th style={{ textAlign: "right" }}>Fiscal offset</th>
+              <th style={{ textAlign: "right" }}>Net impact</th>
+            </tr>
+          </thead>
+          <tbody>
+            {["low", "central", "high"].map((key) => {
+              const row = behavioural[key];
+              if (!row) return null;
+              return (
+                <tr key={key} className={key === "central" ? "bg-slate-50 font-semibold" : ""}>
+                  <td className="font-medium capitalize">{key}</td>
+                  <td style={{ textAlign: "right" }}>{row.elasticity}</td>
+                  <td style={{ textAlign: "right" }}>{formatCount(row.n_new_entrants)}</td>
+                  <td style={{ textAlign: "right" }}>{formatBn(row.fiscal_offset_bn)}</td>
+                  <td style={{ textAlign: "right" }}>
+                    {row.net_cost_bn > 0 ? "-" : "+"}{formatBn(Math.abs(row.net_cost_bn))}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 function BreakdownTable({ dimension, byAge, data, totalRecentlyActive, costBn }) {
   const dimData = useMemo(() => {
     if (dimension === "age" || dimension === "income_decile" || dimension === "wealth_decile") return null;
@@ -216,7 +275,7 @@ export default function ReformTab({ data }) {
     <div className="space-y-8">
       <SectionHeading
         title="NICs exemption reform analysis"
-        description={<>Estimated cost of exempting employers from NICs on employees who transitioned from economic inactivity into work within the last 5 quarters (15 months). Figures are based on PolicyEngine UK microsimulation with <a href="https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/methodologies/labourforcesurveyuserguidance" target="_blank" rel="noreferrer" className="underline">LFS longitudinal data</a> imputed onto the Enhanced FRS.</>}
+        description={<>Estimated cost of exempting employers from NICs on all employees who transitioned from economic inactivity into work within the last 5 quarters (15 months), regardless of disability status. Figures are based on PolicyEngine UK microsimulation with <a href="https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/methodologies/labourforcesurveyuserguidance" target="_blank" rel="noreferrer" className="underline">LFS longitudinal data</a> imputed onto the Enhanced FRS.</>}
       />
 
       {/* ================================================================ */}
@@ -259,7 +318,7 @@ export default function ReformTab({ data }) {
               : "--"}
           </div>
           <div className="mt-2 text-sm text-slate-500">
-            Average annual employer NICs per recently-active worker (vs {"\u00A3"}{data?.baseline?.summary?.avg_nics_per_worker?.toLocaleString() ?? "--"} across all employees)
+            Average annual employer NICs per recently-active worker
           </div>
         </div>
       </div>
@@ -269,7 +328,7 @@ export default function ReformTab({ data }) {
       {/* ================================================================ */}
       {byAge.length > 0 && (
         <>
-          <div className="pt-10">
+          <div>
             <SectionHeading
               title="Detailed breakdown (static)"
               description="Summary table of the NICs exemption cost and workers who became active within 5 quarters, by selected dimension."
@@ -283,8 +342,6 @@ export default function ReformTab({ data }) {
                 { id: "gender", label: "Gender" },
                 { id: "country", label: "Country" },
                 { id: "family_type", label: "Household type" },
-                { id: "income_decile", label: "Income decile" },
-                { id: "wealth_decile", label: "Wealth decile" },
               ].map((opt) => (
                 <button
                   key={opt.id}
@@ -314,7 +371,7 @@ export default function ReformTab({ data }) {
       {/* ================================================================ */}
       {/* BEHAVIOURAL RESPONSE                                             */}
       {/* ================================================================ */}
-      <div className="border-t border-slate-200 pt-10">
+      <div className="border-t border-slate-200 pt-4">
         <SectionHeading
           title="Behavioural impact (labour supply response)"
           description={<>If employers pass the NICs saving on as higher wages, some currently inactive people would find it worthwhile to take a job. We estimate how many by applying participation elasticities from <a href="https://ifs.org.uk/publications/labour-supply-and-taxes" target="_blank" rel="noreferrer" className="underline">Meghir &amp; Phillips (2010)</a>. For each inactive person we impute a potential wage (weighted median of employed people in the same age band and gender from the FRS), calculate the NICs saving their employer would receive, assume this is passed through as higher pay, and then estimate the probability they enter work based on how much their net income rises. The fiscal offset captures the extra income tax paid and benefits no longer claimed by these new workers.</>}
@@ -390,49 +447,9 @@ export default function ReformTab({ data }) {
         )}
       </div>
 
-      {/* Sensitivity table */}
+      {/* Sensitivity table — expandable */}
       {Object.keys(behavioural).length > 0 && (
-        <div className="section-card overflow-x-auto">
-          <SectionHeading
-            title="Sensitivity to participation elasticity"
-            description="The elasticity measures how responsive inactive people are to higher pay. A higher elasticity means more people enter work for a given wage increase."
-          />
-          <table className="data-table" style={{ tableLayout: "fixed" }}>
-            <colgroup>
-              <col style={{ width: "20%" }} />
-              <col style={{ width: "20%" }} />
-              <col style={{ width: "20%" }} />
-              <col style={{ width: "20%" }} />
-              <col style={{ width: "20%" }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th>Scenario</th>
-                <th style={{ textAlign: "right" }}>Elasticity</th>
-                <th style={{ textAlign: "right" }}>New entrants</th>
-                <th style={{ textAlign: "right" }}>Fiscal offset</th>
-                <th style={{ textAlign: "right" }}>Net impact</th>
-              </tr>
-            </thead>
-            <tbody>
-              {["low", "central", "high"].map((key) => {
-                const row = behavioural[key];
-                if (!row) return null;
-                return (
-                  <tr key={key} className={key === "central" ? "bg-slate-50 font-semibold" : ""}>
-                    <td className="font-medium capitalize">{key}</td>
-                    <td style={{ textAlign: "right" }}>{row.elasticity}</td>
-                    <td style={{ textAlign: "right" }}>{formatCount(row.n_new_entrants)}</td>
-                    <td style={{ textAlign: "right" }}>{formatBn(row.fiscal_offset_bn)}</td>
-                    <td style={{ textAlign: "right" }}>
-                      {row.net_cost_bn > 0 ? "-" : "+"}{formatBn(Math.abs(row.net_cost_bn))}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <SensitivityToggle behavioural={behavioural} />
       )}
 
 
@@ -514,10 +531,10 @@ export default function ReformTab({ data }) {
       {/* ================================================================ */}
       {counterfactual.name && (
         <>
-          <div className="border-t border-slate-200 pt-10">
+          <div className="border-t border-slate-200 pt-4">
             <SectionHeading
               title="Comparison: NICs exemption vs disability benefit cuts"
-              description={<>The government&apos;s <a href="https://www.gov.uk/government/consultations/pathways-to-work-reforming-benefits-and-support-to-get-britain-working-green-paper/spring-statement-2025-health-and-disability-benefit-reforms-impacts" target="_blank" rel="noreferrer" className="underline">proposed disability benefit reforms</a> (PIP eligibility tightening, UC health element freeze, projected to save &pound;4.8bn by 2029/30) compared with the NICs exemption. We approximate the benefit cuts as a 10% reduction in PIP/DLA payments for modelling purposes. Both aim to increase employment among disabled/inactive people, but with very different outcomes.</>}
+              description={<>The government&apos;s <a href="https://www.gov.uk/government/consultations/pathways-to-work-reforming-benefits-and-support-to-get-britain-working-green-paper/spring-statement-2025-health-and-disability-benefit-reforms-impacts" target="_blank" rel="noreferrer" className="underline">proposed disability benefit reforms</a> (PIP eligibility tightening, UC health element freeze, projected to save &pound;4.8bn by 2029/30) compared with the NICs exemption. We approximate the benefit cuts as a 10% reduction in PIP/DLA payments for modelling purposes. <strong>Note:</strong> the NICs exemption targets all recently-inactive people (disabled and non-disabled), while benefit cuts only affect disabled benefit recipients. The NICs fiscal cost is net of the fiscal offset from new workers (static cost minus extra tax and benefit savings); the benefit cuts saving is gross. Employment figures for the NICs exemption use participation elasticities (probabilistic); benefit cuts use the same framework but with a lower income-effect elasticity (0.15, consistent with <a href="https://doi.org/10.1086/319564" target="_blank" rel="noreferrer" className="underline">Gruber 2000</a> and <a href="https://doi.org/10.1016/j.jpubeco.2012.01.006" target="_blank" rel="noreferrer" className="underline">Marie &amp; Vall Castell&oacute; 2012</a>).</>}
             />
           </div>
 
@@ -537,7 +554,16 @@ export default function ReformTab({ data }) {
               </thead>
               <tbody>
                 <tr>
-                  <td className="font-medium">People entering work</td>
+                  <td className="font-medium">People affected <span className="text-xs font-normal text-slate-400">(static)</span></td>
+                  <td style={{ textAlign: "right" }} className="text-emerald-700 font-semibold">
+                    {formatCount(totalRecentlyActive)} recently-inactive workers
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    {counterfactual.n_affected ? formatCount(counterfactual.n_affected) : "--"} PIP/DLA recipients
+                  </td>
+                </tr>
+                <tr>
+                  <td className="font-medium">Additional people entering work <span className="text-xs font-normal text-slate-400">(behavioural)</span></td>
                   <td style={{ textAlign: "right" }} className="text-emerald-700 font-semibold">
                     {formatCount(central.n_new_entrants)}
                   </td>
@@ -546,16 +572,16 @@ export default function ReformTab({ data }) {
                   </td>
                 </tr>
                 <tr>
-                  <td className="font-medium">Fiscal cost / saving</td>
+                  <td className="font-medium">Net fiscal cost / saving <span className="text-xs font-normal text-slate-400">(behavioural)</span></td>
                   <td style={{ textAlign: "right" }} className="text-emerald-700 font-semibold">
-                    {formatBn(Math.abs(central.net_cost_bn))} cost
+                    {central.net_cost_bn != null ? `${formatBn(central.net_cost_bn)} cost` : "--"}
                   </td>
                   <td style={{ textAlign: "right" }}>
                     {formatBn(counterfactual.fiscal_saving_bn)} saving
                   </td>
                 </tr>
                 <tr>
-                  <td className="font-medium">People lifted out of poverty</td>
+                  <td className="font-medium">People lifted out of poverty <span className="text-xs font-normal text-slate-400">(behavioural)</span></td>
                   <td style={{ textAlign: "right" }} className="text-emerald-700 font-semibold">
                     {formatCount(povertyImpact.n_lifted_out_of_poverty)}
                   </td>

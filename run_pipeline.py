@@ -456,15 +456,10 @@ for lo, hi in _age_bands:
     for g in ["MALE", "FEMALE"]:
         m = is_employed & (age >= lo) & (age <= hi) & (gender_arr == g)
         if m.sum() > 0:
-            wages_subset = emp_income[m]
-            w_subset = person_weights.values[m]
-            # weighted median
-            sorted_idx = np.argsort(wages_subset)
-            cum_w = np.cumsum(w_subset[sorted_idx])
-            median_wage = wages_subset[sorted_idx][cum_w >= cum_w[-1] / 2][0]
-            _median_wages[(lo, hi, g)] = max(float(median_wage), 0)
+            median_wage = float(MicroSeries(emp_income[m], weights=person_weights[m]).median())
+            _median_wages[(lo, hi, g)] = max(median_wage, 0)
         else:
-            _median_wages[(lo, hi, g)] = 15000.0  # fallback
+            raise ValueError(f"No employed people found for age {lo}-{hi}, gender {g}")
 
 potential_wage = np.zeros(len(age), dtype=float)
 for lo, hi in _age_bands:
@@ -614,18 +609,27 @@ pip_person = baseline.calculate("pip", YEAR).values.astype(float)
 dla_person = baseline.calculate("dla", YEAR).values.astype(float)
 benefit_loss = (pip_person + dla_person) * CUT_RATE  # annual loss per person
 
+# Sum benefit loss at the household level so we compare household income
+# drop (all members' PIP/DLA cuts combined) against household poverty line.
+_hh_pop = baseline.populations["household"]
+_person_hh_id = baseline.populations["person"].household.members_entity_id
+_hh_total_loss = np.bincount(_person_hh_id, weights=benefit_loss, minlength=_hh_pop.count)
+hh_benefit_loss = _hh_total_loss[_person_hh_id]  # broadcast back to person level
+
 # This reduces household net income → negative income effect
 # Some may be forced to seek work (income effect on participation)
 pct_change_cf = np.where(
     hh_net_income > 0,
-    -benefit_loss / hh_net_income,
+    -hh_benefit_loss / hh_net_income,
     0.0,
 )
 # Income effect: lower income → may need to work (positive participation response
 # to income loss). Use same elasticity framework but note the sign:
 # A negative income shock with positive participation elasticity means people
 # are pushed into the labour market.
-# The income effect elasticity for benefit cuts is typically lower (~0.1-0.2)
+# Income-effect elasticity for benefit cuts. 0.15 is conservative, consistent
+# with DWP Spring Statement 2025 implied estimates and at the low end of
+# Gruber (2000, JPE: 0.28-0.36) and Marie & Vall Castello (2012, JPubE: 0.22).
 BENEFIT_CUT_ELAST = 0.15
 
 # Only disabled inactive people affected
@@ -641,14 +645,23 @@ fiscal_saving_cf = float(MicroSeries(
 ).sum()) / 1e9
 
 # Poverty impact of benefit cuts (people losing income → more poverty)
+# Use household-level total loss so multi-recipient households are handled correctly
 benefit_cut_pushes_into_poverty = (
-    ~poverty_bhc.astype(bool) & is_disabled_broad & working_age &
-    ((hh_net_income - benefit_loss) < poverty_line)
+    ~poverty_bhc.astype(bool) & working_age &
+    ((hh_net_income - hh_benefit_loss) < poverty_line) &
+    (hh_benefit_loss > 0)
 ).astype(float)
 n_pushed_into_poverty = float(MicroSeries(
     benefit_cut_pushes_into_poverty, weights=person_weights
 ).sum())
 
+# Count working-age PIP/DLA recipients (people affected by the cuts)
+is_pip_dla_recipient = ((pip_person + dla_person) > 0) & working_age
+n_pip_dla_recipients = float(MicroSeries(
+    is_pip_dla_recipient.astype(float), weights=person_weights
+).sum())
+
+print(f"  Working-age PIP/DLA recipients: {n_pip_dla_recipients:,.0f}")
 print(f"  Benefit cut fiscal saving: £{fiscal_saving_cf:.2f}bn")
 print(f"  People entering work (income effect): {n_entering_cf:,.0f}")
 print(f"  People pushed into poverty: {n_pushed_into_poverty:,.0f}")
@@ -659,6 +672,7 @@ counterfactual = {
     "fiscal_saving_bn": round(fiscal_saving_cf, 2),
     "n_entering_work": round(n_entering_cf),
     "n_pushed_into_poverty": round(n_pushed_into_poverty),
+    "n_affected": round(n_pip_dla_recipients),
 }
 
 # ── Step 11: Income decile breakdown ──────────────────────────────────
@@ -667,12 +681,8 @@ print("\nStep 11: Income decile breakdown...")
 equiv_hh_income = _person_pop.household("equiv_household_net_income", YEAR).astype(float)
 
 # Compute deciles from the working-age population
-wa_incomes = equiv_hh_income[working_age]
-wa_weights_arr = person_weights.values[working_age]
-sorted_idx = np.argsort(wa_incomes)
-cum_w = np.cumsum(wa_weights_arr[sorted_idx])
-total_w = cum_w[-1]
-decile_thresholds = [wa_incomes[sorted_idx][cum_w >= total_w * d / 10][0] for d in range(1, 10)]
+wa_income_ms = MicroSeries(equiv_hh_income[working_age], weights=person_weights[working_age])
+decile_thresholds = [float(wa_income_ms.quantile(d / 10)) for d in range(1, 10)]
 
 # Assign deciles to all people (1-indexed: 1=poorest, 10=richest)
 decile = np.digitize(equiv_hh_income, decile_thresholds, right=True) + 1
@@ -715,11 +725,8 @@ by_income_decile_static = _build_decile_breakdown(decile, "Decile")
 # Wealth decile
 print("\nStep 11b: Wealth decile breakdown...")
 total_wealth = _person_pop.household("total_wealth", YEAR).astype(float)
-wa_wealth = total_wealth[working_age]
-sorted_w_idx = np.argsort(wa_wealth)
-cum_ww = np.cumsum(wa_weights_arr[sorted_w_idx])
-total_ww = cum_ww[-1]
-wealth_thresholds = [wa_wealth[sorted_w_idx][cum_ww >= total_ww * d / 10][0] for d in range(1, 10)]
+wa_wealth_ms = MicroSeries(total_wealth[working_age], weights=person_weights[working_age])
+wealth_thresholds = [float(wa_wealth_ms.quantile(d / 10)) for d in range(1, 10)]
 
 wealth_decile = np.digitize(total_wealth, wealth_thresholds, right=True) + 1
 wealth_decile = np.clip(wealth_decile, 1, 10)

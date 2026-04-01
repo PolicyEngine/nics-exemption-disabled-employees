@@ -47,10 +47,10 @@ function CustomTooltip({ active, payload, label, formatter }) {
 }
 
 const NICS_THRESHOLDS = [
-  { band: "Below Secondary Threshold", range: "Up to \u00A35,000/yr (\u00A396/wk)", rate: "0%" },
-  { band: "Above Secondary Threshold", range: "\u00A35,000+/yr", rate: "15%" },
-  { band: "Employment Allowance", range: "Eligible employers", rate: "\u00A310,500 off" },
-  { band: "Apprenticeship Levy", range: "Pay bill > \u00A33m", rate: "0.5%" },
+  { band: "Below Secondary Threshold", range: "Up to \u00A35,000/yr (\u00A396/wk)", rate: "0%", url: "https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2025-to-2026" },
+  { band: "Above Secondary Threshold", range: "\u00A35,000+/yr", rate: "15%", url: "https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2025-to-2026" },
+  { band: "Employment Allowance", range: "Eligible employers", rate: "\u00A310,500 off", url: "https://www.gov.uk/claim-employment-allowance" },
+  { band: "Apprenticeship Levy", range: "Pay bill > \u00A33m", rate: "0.5%", url: "https://www.gov.uk/guidance/pay-apprenticeship-levy" },
 ];
 
 const OFFICIAL_COMPARISON = [
@@ -175,32 +175,41 @@ export default function BaselineTab({ data }) {
             description="Breakdown of the working-age population by disability and activity status."
           />
           {summary ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">Disability employment rate</div>
-                <div className="mt-1 text-2xl font-bold text-slate-900">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-5 py-4">
+                <div>
+                  <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">Disability employment rate</div>
+                  <div className="mt-0.5 text-xs text-slate-500">
+                    vs {summary.non_disabled_employment_rate != null ? `${summary.non_disabled_employment_rate}%` : "--"} non-disabled ({summary.disability_employment_gap_pp != null ? `${summary.disability_employment_gap_pp}pp gap` : ""})
+                  </div>
+                </div>
+                <div className="text-2xl font-bold text-slate-900">
                   {summary.disabled_employment_rate != null ? `${summary.disabled_employment_rate}%` : "--"}
                 </div>
-                <div className="mt-1 text-xs text-slate-500">
-                  vs {summary.non_disabled_employment_rate != null ? `${summary.non_disabled_employment_rate}%` : "--"} non-disabled
-                </div>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">% of inactive who are disabled</div>
-                <div className="mt-1 text-2xl font-bold text-slate-900">
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-5 py-4">
+                <div>
+                  <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">% of inactive who are disabled</div>
+                  <div className="mt-0.5 text-xs text-slate-500">
+                    {summary.n_inactive_disabled ? `${formatCount(summary.n_inactive_disabled)} of ${formatCount(summary.n_economically_inactive || 0)} inactive` : ""}
+                  </div>
+                </div>
+                <div className="text-2xl font-bold text-slate-900">
                   {summary.pct_inactive_disabled != null ? `${summary.pct_inactive_disabled}%` : "--"}
                 </div>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">Disability benefits spending</div>
-                <div className="mt-1 text-2xl font-bold text-slate-900">
-                  {summary.total_disability_benefits_bn ? formatBn(summary.total_disability_benefits_bn) : "--"}
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-5 py-4">
+                <div>
+                  <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">Disability benefits spending</div>
+                  <div className="mt-0.5 text-xs text-slate-500">
+                    Official:{" "}
+                    <a href="https://www.gov.uk/government/consultations/pathways-to-work-reforming-benefits-and-support-to-get-britain-working-green-paper/spring-statement-2025-health-and-disability-benefit-reforms-impacts" target="_blank" rel="noreferrer" className="underline">
+                      £55.1bn, DWP 2025–26
+                    </a>
+                  </div>
                 </div>
-                <div className="mt-1 text-xs text-slate-500">
-                  Official:{" "}
-                  <a href="https://www.gov.uk/government/consultations/pathways-to-work-reforming-benefits-and-support-to-get-britain-working-green-paper/spring-statement-2025-health-and-disability-benefit-reforms-impacts" target="_blank" rel="noreferrer" className="underline">
-                    £55.1bn, DWP 2025–26
-                  </a>
+                <div className="text-2xl font-bold text-slate-900">
+                  {summary.total_disability_benefits_bn ? formatBn(summary.total_disability_benefits_bn) : "--"}
                 </div>
               </div>
             </div>
@@ -317,7 +326,7 @@ export default function BaselineTab({ data }) {
               <tbody>
                 {NICS_THRESHOLDS.map((row) => (
                   <tr key={row.band}>
-                    <td className="font-medium">{row.band}</td>
+                    <td className="font-medium"><a href={row.url} target="_blank" rel="noreferrer" className="underline">{row.band}</a></td>
                     <td>{row.range}</td>
                     <td>{row.rate}</td>
                   </tr>

@@ -65,18 +65,24 @@ function Dashboard() {
     <div className="app-shell min-h-screen">
       <header className="title-row">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4 md:px-8">
-          <h1>NICs exemption for disabled employees</h1>
+          <h1>NICs exemption for recently-inactive employees analysis</h1>
         </div>
       </header>
 
       <main className="relative z-[1] mx-auto max-w-[1400px] px-6 py-10 md:px-8 md:py-12">
         <div className="animate-[fadeIn_0.4s_ease-out]">
           <p className="mb-3 text-[1.05rem] leading-relaxed text-slate-600">
-            This dashboard uses PolicyEngine&apos;s microsimulation model to
-            estimate the static cost of exempting employers from NICs on
-            employees who recently transitioned from economic inactivity into
-            work. The <strong>NICs exemption reform</strong> tab shows the
-            estimated cost and age-group breakdown. The{" "}
+            This dashboard uses{" "}
+            <a href="https://policyengine.org" target="_blank" rel="noreferrer" className="underline">
+              PolicyEngine UK
+            </a>
+            &apos;s microsimulation model to
+            estimate the cost, employment effects, and poverty impact of exempting
+            employers from NICs on employees who recently transitioned from
+            economic inactivity into work. The exemption applies to all
+            recently-inactive workers (disabled and non-disabled). The <strong>NICs exemption reform</strong>{" "}
+            tab shows the static cost, behavioural labour-supply response, and a
+            comparison with disability benefit cuts. The{" "}
             <strong>Inactivity baseline</strong> tab presents the current
             state of economic inactivity, disability, and employer NICs. The{" "}
             <strong>Methodology</strong> tab explains the data sources,

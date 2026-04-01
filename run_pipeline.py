@@ -467,9 +467,11 @@ for lo, hi in _age_bands:
         m = is_inactive & (age >= lo) & (age <= hi) & (gender_arr == g)
         potential_wage[m] = _median_wages[(lo, hi, g)]
 
-# 9b — employer NICs on potential wage (15% above £5,000 secondary threshold)
-NICS_RATE = 0.15
-SECONDARY_THRESHOLD = 5000.0
+# 9b — employer NICs on potential wage (rate and threshold from PE parameters)
+_class_1 = baseline.tax_benefit_system.parameters("2025-01-01").gov.hmrc.national_insurance.class_1
+NICS_RATE = float(_class_1.rates.employer)
+SECONDARY_THRESHOLD = float(_class_1.thresholds.secondary_threshold) * 52  # weekly → annual
+print(f"  Employer NICs rate: {NICS_RATE:.1%}, secondary threshold: £{SECONDARY_THRESHOLD:,.0f}/year")
 potential_nics = np.maximum(potential_wage - SECONDARY_THRESHOLD, 0) * NICS_RATE
 
 # With full pass-through: worker gets wage + nics saving
@@ -482,6 +484,9 @@ potential_gross_with_exemption = potential_wage + potential_nics
 # With the exemption, they earn potential_wage + potential_nics (employer saving passed through).
 # The marginal gain from the policy = potential_nics (the NICs saving).
 # We express this as a % of net income if working WITHOUT the exemption.
+# Assumed EMTR for workers entering from inactivity (~20% income tax + 8% employee
+# NICs + ~12% benefit withdrawal). PE's marginal_tax_rate variable cannot be used
+# here because these people are currently inactive with zero employment income.
 EFFECTIVE_MARGINAL_RATE = 0.40
 net_nics_saving = potential_nics * (1 - EFFECTIVE_MARGINAL_RATE)
 net_income_if_working = hh_net_income + potential_wage * (1 - EFFECTIVE_MARGINAL_RATE)

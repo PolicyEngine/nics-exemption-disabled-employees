@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nics-exemption"
+version = "0.1.0"
+description = "Data pipeline for modelling NICs exemption for disabled and recently inactive employees."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+  "numpy>=1.26",
+  "pandas>=2.2",
+  "microdf-python",
+]
+
+[project.optional-dependencies]
+simulation = [
+  "policyengine-uk>=2.75.2",
+  "microimpute",
+]
+dev = [
+  "pytest>=8.0",
+]
+
+[project.scripts]
+nics-exemption-build = "nics_exemption.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nics_exemption"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

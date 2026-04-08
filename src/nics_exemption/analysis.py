@@ -334,7 +334,14 @@ def build_full_analysis(df: MicroDataFrame) -> dict:
         exemption_cost_bn = 0.0
         n_target = 0
 
-    cost_eff = compute_cost_effectiveness(exemption_cost_bn, n_target)
+    if n_target > 0:
+        cost_eff = compute_cost_effectiveness(exemption_cost_bn, n_target)
+    else:
+        cost_eff = {
+            "total_cost_bn": 0.0,
+            "n_target_employees": 0,
+            "cost_per_employee": 0,
+        }
 
     return {
         "summary": summary,

@@ -53,48 +53,50 @@ const NICS_THRESHOLDS = [
   { band: "Apprenticeship Levy", range: "Pay bill > \u00A33m", rate: "0.5%", url: "https://www.gov.uk/guidance/pay-apprenticeship-levy" },
 ];
 
-const OFFICIAL_COMPARISON = [
-  {
-    metric: "Economically inactive (working age)",
-    model: "7.1m",
-    official: "~9.0m",
-    source: "ONS LFS",
-    sourceUrl: "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/bulletins/employmentintheuk/latest",
-    note: "FRS under-counts inactive vs LFS",
-  },
-  {
-    metric: "Disabled (working age)",
-    model: "5.6m",
-    official: "~10.4m",
-    source: "DWP 2025",
-    sourceUrl: "https://www.gov.uk/government/statistics/the-employment-of-disabled-people-2025",
-    note: "Model uses benefit receipt + employment status; official uses Equality Act self-report. FRS collects Equality Act data but PolicyEngine does not yet load it.",
-  },
-  {
-    metric: "Inactive & disabled",
-    model: "4.5m",
-    official: "~4.2m",
-    source: "DWP 2025",
-    sourceUrl: "https://www.gov.uk/government/statistics/the-employment-of-disabled-people-2025",
-    note: "",
-  },
-  {
-    metric: "Total employer NICs",
-    model: "\u00A3151.3bn",
-    official: "\u00A3145.8bn",
-    source: "OBR March 2025",
-    sourceUrl: "https://obr.uk/forecasts-in-depth/tax-by-tax-spend-by-spend/national-insurance-contributions-nics/",
-    note: "Both are Class 1 secondary only. 3.8% gap reflects FRS-based microsimulation variance vs HMRC admin data.",
-  },
-  {
-    metric: "Disability benefits spending",
-    model: "\u00A353.9bn",
-    official: "\u00A355.1bn",
-    source: "DWP Spring Statement 2025",
-    sourceUrl: "https://www.gov.uk/government/consultations/pathways-to-work-reforming-benefits-and-support-to-get-britain-working-green-paper/spring-statement-2025-health-and-disability-benefit-reforms-impacts",
-    note: "Official is 2025\u201326 forecast (\u00A351.2bn in 2024\u201325). Working-age incapacity & disability benefits only.",
-  },
-];
+function buildOfficialComparison(summary) {
+  return [
+    {
+      metric: "Economically inactive (working age)",
+      model: summary?.n_economically_inactive ? formatCount(summary.n_economically_inactive) : "--",
+      official: "~9.0m",
+      source: "ONS LFS",
+      sourceUrl: "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/bulletins/employmentintheuk/latest",
+      note: "FRS under-counts inactive vs LFS",
+    },
+    {
+      metric: "Disabled (working age)",
+      model: summary?.n_disabled ? formatCount(summary.n_disabled) : "--",
+      official: "~10.4m",
+      source: "DWP 2025",
+      sourceUrl: "https://www.gov.uk/government/statistics/the-employment-of-disabled-people-2025",
+      note: "Model uses benefit receipt + employment status; official uses Equality Act self-report. FRS collects Equality Act data but PolicyEngine does not yet load it.",
+    },
+    {
+      metric: "Inactive & disabled",
+      model: summary?.n_inactive_disabled ? formatCount(summary.n_inactive_disabled) : "--",
+      official: "~4.2m",
+      source: "DWP 2025",
+      sourceUrl: "https://www.gov.uk/government/statistics/the-employment-of-disabled-people-2025",
+      note: "",
+    },
+    {
+      metric: "Total employer NICs",
+      model: summary?.total_employer_nics_bn != null ? formatBn(summary.total_employer_nics_bn) : "--",
+      official: "\u00A3145.8bn",
+      source: "OBR March 2025",
+      sourceUrl: "https://obr.uk/forecasts-in-depth/tax-by-tax-spend-by-spend/national-insurance-contributions-nics/",
+      note: "Both are Class 1 secondary only. 3.8% gap reflects FRS-based microsimulation variance vs HMRC admin data.",
+    },
+    {
+      metric: "Disability benefits spending",
+      model: summary?.total_disability_benefits_bn != null ? formatBn(summary.total_disability_benefits_bn) : "--",
+      official: "\u00A355.1bn",
+      source: "DWP Spring Statement 2025",
+      sourceUrl: "https://www.gov.uk/government/consultations/pathways-to-work-reforming-benefits-and-support-to-get-britain-working-green-paper/spring-statement-2025-health-and-disability-benefit-reforms-impacts",
+      note: "Official is 2025\u201326 forecast (\u00A351.2bn in 2024\u201325). Working-age incapacity & disability benefits only.",
+    },
+  ];
+}
 
 export default function BaselineTab({ data }) {
   const summary = getBaselineSummary(data);
@@ -106,6 +108,8 @@ export default function BaselineTab({ data }) {
     if (!inactivityReasons.length) return [];
     return [...inactivityReasons].sort((a, b) => (b.count || 0) - (a.count || 0));
   }, [inactivityReasons]);
+
+  const officialComparison = useMemo(() => buildOfficialComparison(summary), [summary]);
 
   return (
     <div className="space-y-10">
@@ -312,7 +316,7 @@ export default function BaselineTab({ data }) {
         <div className="section-card">
           <SectionHeading
             title="NICs rates and thresholds"
-            description="Current employer NICs rate structure (2025-26 tax year)."
+            description="Current employer NICs rate structure (2026-27 tax year)."
           />
           <div className="overflow-x-auto">
             <table className="data-table">
@@ -422,7 +426,7 @@ export default function BaselineTab({ data }) {
             </tr>
           </thead>
           <tbody>
-            {OFFICIAL_COMPARISON.map((row) => (
+            {officialComparison.map((row) => (
               <tr key={row.metric}>
                 <td className="font-medium">{row.metric}</td>
                 <td style={{ textAlign: "right" }}>{row.model}</td>

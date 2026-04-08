@@ -18,7 +18,7 @@ from .lfs import (
     build_lfs_transition_targets,
 )
 
-DEFAULT_YEAR = 2025
+DEFAULT_YEAR = 2026
 DEFAULT_OUTPUT_PATH = Path("data/nics_exemption_results.json")
 DEFAULT_DASHBOARD_OUTPUT_PATH = Path("dashboard/public/data/nics_exemption_results.json")
 

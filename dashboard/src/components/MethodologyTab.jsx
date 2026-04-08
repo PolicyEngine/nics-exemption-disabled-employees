@@ -21,7 +21,7 @@ export default function MethodologyTab({ data }) {
           as a wage increase under full pass-through, and estimate entry
           probabilities using participation elasticities from{" "}
           <a href="https://ifs.org.uk/publications/labour-supply-and-taxes" target="_blank" rel="noreferrer" className="underline">Meghir &amp; Phillips (2010)</a>.
-          All figures are for the {data?.year || "2025"} fiscal year.
+          All figures are for the {data?.year || "2026"} fiscal year.
         </p>
       </div>
 

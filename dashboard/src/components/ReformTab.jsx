@@ -173,7 +173,7 @@ function SensitivityToggle({ behavioural }) {
                   <td style={{ textAlign: "right" }}>{formatCount(row.n_new_entrants)}</td>
                   <td style={{ textAlign: "right" }}>{formatBn(row.fiscal_offset_bn)}</td>
                   <td style={{ textAlign: "right" }}>
-                    {netCost > 0 ? "-" : "+"}{formatBn(Math.abs(netCost))}
+                    {formatBn(Math.abs(netCost))} {netCost > 0 ? "cost" : "saving"}
                   </td>
                 </tr>
               );
@@ -432,7 +432,7 @@ export default function ReformTab({ data }) {
           </div>
           <div className="mt-2 text-3xl font-bold tracking-tight text-emerald-700">
             {central.net_cost_bn != null
-              ? `${displayNetCost > 0 ? "-" : "+"}${formatBn(Math.abs(displayNetCost))}`
+              ? `${formatBn(Math.abs(displayNetCost))} ${displayNetCost > 0 ? "cost" : "saving"}`
               : "--"}
           </div>
           <div className="mt-2 text-sm text-slate-500">

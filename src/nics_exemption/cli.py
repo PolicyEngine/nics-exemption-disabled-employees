@@ -1,70 +1,51 @@
+"""Command-line entry point for the NICs exemption pipeline.
+
+Exposes a :func:`main` callable that ``[project.scripts]`` registers as
+``nics-exemption-build`` and that ``__main__.py`` invokes for
+``python -m nics_exemption``.
+"""
+
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
 
-from .pipeline import (
-    DEFAULT_DASHBOARD_OUTPUT_PATH,
-    DEFAULT_OUTPUT_PATH,
-    DEFAULT_YEAR,
-    generate_results_file,
-)
+from .pipeline import run
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Generate dashboard-ready NICs exemption policy results."
+        prog="nics-exemption-build",
+        description="Generate dashboard-ready NICs exemption policy results.",
     )
-    parser.add_argument("--year", type=int, default=DEFAULT_YEAR)
-    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_PATH)
-    parser.add_argument(
-        "--sync-dashboard",
-        action="store_true",
-        help="Copy the generated JSON into dashboard/public/data/ as well.",
+    parser.add_argument("--year", type=int, required=True)
+    parser.add_argument("--lfs-path", type=Path, required=True)
+    parser.add_argument("--effective-marginal-rate", type=float, required=True)
+    parser.add_argument("--elasticity-low", type=float, required=True)
+    parser.add_argument("--elasticity-central", type=float, required=True)
+    parser.add_argument("--elasticity-high", type=float, required=True)
+    cut_group = parser.add_mutually_exclusive_group(required=True)
+    cut_group.add_argument(
+        "--benefit-cut-rate",
+        type=float,
+        help="Explicit proportional cut to PIP+DLA (e.g. 0.1 for 10%%).",
     )
-    parser.add_argument(
-        "--dashboard-output",
-        type=Path,
-        default=DEFAULT_DASHBOARD_OUTPUT_PATH,
+    cut_group.add_argument(
+        "--benefit-cut-target-bn",
+        type=float,
+        help=(
+            "Calibrate the PIP+DLA cut rate so the modelled fiscal saving "
+            "matches this target (in £bn). E.g. 4.8 to match the Spring "
+            "Statement 2025 Pathways to Work green-paper headline saving."
+        ),
     )
-    parser.add_argument(
-        "--lfs-path",
-        type=str,
-        default=None,
-        help="Path to the LFS longitudinal dataset (tab-separated). "
-        "If provided, inactivity transitions are imputed onto the FRS.",
-    )
+    parser.add_argument("--benefit-cut-elasticity", type=float, required=True)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
-    args = parser.parse_args(argv)
-    results = generate_results_file(
-        year=args.year,
-        output_path=args.output,
-        sync_dashboard=args.sync_dashboard,
-        dashboard_output_path=args.dashboard_output,
-        lfs_path=args.lfs_path,
-    )
-    print(f"Results saved to {args.output}")
-    if args.sync_dashboard:
-        print(f"Dashboard data synced to {args.dashboard_output}")
-
-    if "nics_exemption" in results:
-        nics = results["nics_exemption"]
-        print(
-            f"Summary: total employer NICs = "
-            f"{nics['total_employer_nics_bn']}bn, "
-            f"recently active = {nics['nics_recently_active_bn']}bn"
-        )
-    elif "baseline" in results:
-        bl = results["baseline"]
-        print(
-            f"Summary: total employer NICs = "
-            f"{bl['total_employer_nics_bn']}bn, "
-            f"working-age population = {bl['n_working_age']:,}"
-        )
+    args = build_parser().parse_args(argv)
+    run(args)
     return 0
 
 

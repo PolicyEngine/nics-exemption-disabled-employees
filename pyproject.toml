@@ -5,29 +5,63 @@ build-backend = "hatchling.build"
 [project]
 name = "nics-exemption"
 version = "0.1.0"
-description = "Data pipeline for modelling NICs exemption for disabled and recently inactive employees."
+description = "Data pipeline for modelling NICs exemption for recently-inactive employees."
 readme = "README.md"
+license = "AGPL-3.0-or-later"
 requires-python = ">=3.13"
+authors = [
+  { name = "PolicyEngine" },
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+  "Operating System :: OS Independent",
+  "Topic :: Scientific/Engineering",
+]
 dependencies = [
   "numpy>=1.26",
   "pandas>=2.2",
-  "microdf-python",
+  "microdf-python>=1.2.0",
 ]
 
 [project.optional-dependencies]
 simulation = [
   "policyengine-uk>=2.75.2",
-  "microimpute",
+  "microimpute>=0.1.0",
 ]
 dev = [
   "pytest>=8.0",
+  "ruff>=0.6",
 ]
 
 [project.scripts]
 nics-exemption-build = "nics_exemption.cli:main"
 
+[project.urls]
+Homepage = "https://github.com/PolicyEngine/nics-exemption-inactive-employees"
+Repository = "https://github.com/PolicyEngine/nics-exemption-inactive-employees"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/nics_exemption"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/nics_exemption/**/*.py",
+  "tests/**/*.py",
+  "README.md",
+  "LICENSE",
+  "pyproject.toml",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "W"]
+ignore = ["E501"]

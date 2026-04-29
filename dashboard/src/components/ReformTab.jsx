@@ -98,6 +98,92 @@ function DecileCharts({ data, dimension }) {
   );
 }
 
+function BehaviouralStepsToggle() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-2">
+      <p>
+        If employers pass the NICs saving on as higher wages, some currently inactive people may enter work. We model the extensive-margin participation response only (whether to work, not hours), using a single population-wide elasticity of <strong>0.25</strong> from{" "}
+        <a href="https://rajchetty.com/wp-content/uploads/2021/04/ext_margin.pdf" target="_blank" rel="noreferrer" className="underline">Chetty, Guren, Manoli &amp; Weber (2013)</a>. The pipeline reports three scenarios (low 0.1 / central 0.25 / high 0.4) bracketing the wider literature range; their sensitivity is shown in the expandable table below the headline metrics.{" "}
+        <button
+          className="font-semibold text-slate-700 underline decoration-dotted underline-offset-2 hover:text-slate-900"
+          onClick={() => setOpen(!open)}
+        >
+          {open ? "Hide steps ▾" : "Show steps ▸"}
+        </button>
+      </p>
+      {open && (
+        <ol className="mt-3 list-decimal space-y-2 pl-5">
+          <li>Impute a potential wage for each working-age inactive person from the FRS median wage of employed people in the same age band and gender.</li>
+          <li>Compute the firm&apos;s employer-NICs saving on that wage as <em>max(0, wage − £5,000) × 15%</em>. Both the rate and the secondary threshold are statutory, set by the{" "}
+            <a href="https://www.legislation.gov.uk/ukpga/2025/11/contents" target="_blank" rel="noreferrer" className="underline">National Insurance Contributions (Secondary Class 1 Contributions) Act 2025</a>{" "}
+            (effective 6 April 2025), and pulled at runtime from{" "}
+            <a href="https://policyengine.org" target="_blank" rel="noreferrer" className="underline">PolicyEngine UK</a>&apos;s parameter database, which mirrors{" "}
+            <a href="https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2025-to-2026" target="_blank" rel="noreferrer" className="underline">HMRC&apos;s published rates</a>{" "}
+            for the modelled tax year.
+          </li>
+          <li>Under full pass-through, the worker&apos;s gross pay rises by that saving.</li>
+          <li>Convert the gross-pay uplift to a net income gain using the effective marginal rate (income tax + employee NICs + benefit withdrawal).</li>
+          <li>Apply the participation elasticity to the net-income gain expressed as a share of household net income if working: <em>P(enter work) = elasticity × %Δ net income</em>, clipped to [0,&thinsp;1].</li>
+          <li>
+            Aggregate across the inactive working-age population to obtain:
+            <ul className="mt-1 list-disc space-y-1 pl-5">
+              <li>expected new entrants — the sum of per-person entry probabilities scaled to the population;</li>
+              <li>fiscal offset from those new earners — extra income tax, employee NICs, and reduced benefit entitlement;</li>
+              <li>net fiscal cost — static cost minus fiscal offset;</li>
+              <li>poverty impact — a new entrant counts as lifted out when their net wage gain exceeds their household&apos;s BHC poverty gap.</li>
+            </ul>
+          </li>
+        </ol>
+      )}
+    </div>
+  );
+}
+
+function ComparisonMethodologyToggle({ counterfactual, year }) {
+  const [open, setOpen] = useState(false);
+  const cutRatePct = counterfactual?.cut_rate_pct;
+  const pipDlaTotal = counterfactual?.pip_dla_working_age_total_bn;
+  return (
+    <div className="mt-2">
+      <p>
+        A side-by-side comparison of two policies aimed at moving inactive people into work: the <strong>NICs exemption</strong> proposed here, and the{" "}
+        <a href="https://www.gov.uk/government/consultations/pathways-to-work-reforming-benefits-and-support-to-get-britain-working-green-paper/spring-statement-2025-health-and-disability-benefit-reforms-impacts" target="_blank" rel="noreferrer" className="underline">government&apos;s announced disability-benefit reforms</a>{" "}
+        (PIP eligibility tightening + UC health element freeze, projected to save <strong>£4.8bn by 2029–30</strong>).{" "}
+        <button
+          className="font-semibold text-slate-700 underline decoration-dotted underline-offset-2 hover:text-slate-900"
+          onClick={() => setOpen(!open)}
+        >
+          {open ? "Hide methodology ▾" : "Show methodology ▸"}
+        </button>
+      </p>
+      {open && (
+        <ul className="mt-3 list-disc space-y-2 pl-5">
+          <li>
+            <strong>Target.</strong> £4.8bn is the headline fiscal saving in the{" "}
+            <a href="https://www.gov.uk/government/consultations/pathways-to-work-reforming-benefits-and-support-to-get-britain-working-green-paper/spring-statement-2025-health-and-disability-benefit-reforms-impacts" target="_blank" rel="noreferrer" className="underline">Spring Statement 2025 Pathways to Work green paper</a>.
+          </li>
+          <li>
+            <strong>How we model the cut.</strong> We use{" "}
+            <a href="https://policyengine.org" target="_blank" rel="noreferrer" className="underline">PolicyEngine UK</a>{" "}
+            to compute total working-age PIP+DLA spending in the modelled year ({pipDlaTotal ? `£${pipDlaTotal.toFixed(1)}bn` : "~£26bn"} for {year || "2026"}), then cut every recipient&apos;s PIP and DLA payments by the same percentage. The percentage is <strong>back-solved</strong> so the modelled fiscal saving equals £4.8bn — for {year || "2026"} that comes out at <strong>{cutRatePct != null ? `${cutRatePct}%` : "~19%"}</strong>. In plain terms, someone currently receiving £100/week in PIP+DLA would receive about £{cutRatePct != null ? Math.round(100 * (1 - cutRatePct / 100)) : 81}/week after the cut. This matches the policy&apos;s headline fiscal saving but understates its selectivity — the real reform targets specific sub-groups via activity-level eligibility scoring rather than cutting everyone the same.
+          </li>
+          <li>
+            <strong>Static vs behavioural rows.</strong> The static NICs row covers workers who already moved from inactivity into work; the behavioural row estimates additional entries from the currently inactive pool.
+          </li>
+          <li>
+            <strong>Net vs gross fiscal cost.</strong> The NICs fiscal cost is net (static cost minus the fiscal offset from new workers); the benefit-cuts saving is gross.
+          </li>
+          <li>
+            <strong>Benefit-cuts elasticity (income effect).</strong> The NICs side reuses the elasticity already described in the Behavioural impact section above. The benefit-cuts side operates through a different channel: a PIP/DLA cut reduces out-of-work income, which pushes some disabled inactive people to seek work to make up the loss. For each disabled inactive recipient the cut reduces household income, and we apply <em>P(enter work) = 0.22 × |%Δ household income|</em>, clipped to [0,&thinsp;1], then aggregate. The 0.22 is the income-effect elasticity for disabled people from{" "}
+            <a href="https://eprints.lse.ac.uk/40085/" target="_blank" rel="noreferrer" className="underline">Marie &amp; Vall Castell&oacute; (2012)</a>.
+          </li>
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function CaveatsToggle() {
   const [open, setOpen] = useState(false);
   return (
@@ -109,9 +195,16 @@ function CaveatsToggle() {
         Caveats {open ? "▾" : "▸"}
       </button>
       {open && (
-        <p className="mt-2 text-sm leading-6 text-slate-600">
-          We assume full pass-through of the NICs saving to wages; the OBR assumes only 60–76% is passed through, so these estimates are an upper bound. Many inactive people also face health, accessibility, and skills barriers that financial incentives alone will not overcome, and the model does not account for deadweight, substitution, or displacement effects.
-        </p>
+        <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-6 text-slate-600">
+          <li>
+            Full-pass-through assumption: the{" "}
+            <a href="https://obr.uk/efo/economic-and-fiscal-outlook-october-2024/" target="_blank" rel="noreferrer" className="underline">OBR (October 2024 EFO, ¶3.11)</a>{" "}
+            assumes about 60% pass-through in the short run rising to 76% by 2027–28, so our numbers are an upper bound.
+          </li>
+          <li>Hours responses are not modelled; already-employed workers have no behavioural response.</li>
+          <li>Health, accessibility, and skills barriers limit the policy&apos;s reach beyond what financial incentives alone capture.</li>
+          <li>Deadweight, substitution, and displacement effects are excluded.</li>
+        </ul>
       )}
     </div>
   );
@@ -139,7 +232,7 @@ function SensitivityToggle({ behavioural }) {
             Sensitivity to participation elasticity
           </h3>
           <p className="mt-1 text-sm text-slate-500">
-            The elasticity measures how responsive inactive people are to higher pay. A higher elasticity means more people enter work for a given wage increase.
+            How the headline numbers move under low (0.1) / central (0.25, <a href="https://rajchetty.com/wp-content/uploads/2021/04/ext_margin.pdf" target="_blank" rel="noreferrer" className="underline">Chetty et al. 2013</a>) / high (0.4) elasticity scenarios.
           </p>
         </div>
       </button>
@@ -268,7 +361,6 @@ export default function ReformTab({ data }) {
   const povertyImpact = data?.reform?.nics_exemption?.poverty_impact || {};
   const counterfactual = data?.reform?.counterfactual_benefit_cuts || {};
   const byDecileBehav = data?.reform?.nics_exemption?.by_income_decile_behavioural || [];
-  const byWealthDecileBehav = data?.reform?.nics_exemption?.by_wealth_decile_behavioural || [];
   const nInactive = data?.baseline?.summary?.n_economically_inactive || 0;
   const displayNetCost =
     summary?.cost_bn != null && central.fiscal_offset_bn != null
@@ -393,10 +485,10 @@ export default function ReformTab({ data }) {
       {/* ================================================================ */}
       {/* BEHAVIOURAL RESPONSE                                             */}
       {/* ================================================================ */}
-      <div className="border-t border-slate-200 pt-4">
+      <div>
         <SectionHeading
-          title="Behavioural impact (labour supply response)"
-          description={<>If employers pass the NICs saving on as higher wages, some currently inactive people may enter work. We model this in five steps: <strong>(1)</strong> impute a potential wage for each working-age inactive person using the weighted median wage of employed people in the same age band and gender from the FRS; <strong>(2)</strong> calculate employer NICs on that wage using the rate and secondary threshold from PolicyEngine parameters; <strong>(3)</strong> assume full pass-through, so gross pay rises by the employer NICs saving; <strong>(4)</strong> convert that saving to a net income gain using the effective marginal rate specified for the run, which combines income tax, employee NICs, and benefit withdrawal; <strong>(5)</strong> express the gain as a share of household net income if working without the exemption and apply an extensive-margin participation elasticity: <em>P(enter work) = elasticity &times; %&Delta; net income</em>, clipped to [0,&thinsp;1]. This is an extensive-margin estimate only: hours responses are not modelled, and already-employed workers have no behavioural response. The fiscal offset is approximated as extra tax revenue plus reduced benefit entitlement using the same effective marginal rate.</>}
+          title="Behavioural impact"
+          description={<BehaviouralStepsToggle />}
         />
         <CaveatsToggle />
       </div>
@@ -406,7 +498,7 @@ export default function ReformTab({ data }) {
           <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
             New entrants (central)
           </div>
-          <div className="mt-2 text-3xl font-bold tracking-tight text-emerald-700">
+          <div className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
             {central.n_new_entrants ? formatCount(central.n_new_entrants) : "--"}
           </div>
           <div className="mt-2 text-sm text-slate-500">
@@ -419,7 +511,7 @@ export default function ReformTab({ data }) {
           <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
             Fiscal offset
           </div>
-          <div className="mt-2 text-3xl font-bold tracking-tight text-emerald-700">
+          <div className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
             {central.fiscal_offset_bn != null ? formatBn(central.fiscal_offset_bn) : "--"}
           </div>
           <div className="mt-2 text-sm text-slate-500">
@@ -430,9 +522,9 @@ export default function ReformTab({ data }) {
           <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
             Net fiscal impact
           </div>
-          <div className="mt-2 text-3xl font-bold tracking-tight text-emerald-700">
+          <div className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
             {central.net_cost_bn != null
-              ? `${formatBn(Math.abs(displayNetCost))} ${displayNetCost > 0 ? "cost" : "saving"}`
+              ? (displayNetCost < 0 ? `−${formatBn(Math.abs(displayNetCost))}` : formatBn(Math.abs(displayNetCost)))
               : "--"}
           </div>
           <div className="mt-2 text-sm text-slate-500">
@@ -445,7 +537,7 @@ export default function ReformTab({ data }) {
           <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
             Poverty reduction
           </div>
-          <div className="mt-2 text-3xl font-bold tracking-tight text-emerald-700">
+          <div className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
             {povertyImpact.n_lifted_out_of_poverty
               ? formatCount(povertyImpact.n_lifted_out_of_poverty)
               : "--"}
@@ -459,7 +551,7 @@ export default function ReformTab({ data }) {
             <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
               NEETs entering work
             </div>
-            <div className="mt-2 text-3xl font-bold tracking-tight text-emerald-700">
+            <div className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
               {formatCount(central.n_neets_entering_work)}
             </div>
             <div className="mt-2 text-sm text-slate-500">
@@ -487,7 +579,6 @@ export default function ReformTab({ data }) {
           {[
             { id: "age", label: "Age group" },
             { id: "income_decile", label: "Income decile" },
-            { id: "wealth_decile", label: "Wealth decile" },
           ].map((opt) => (
             <button
               key={opt.id}
@@ -531,20 +622,6 @@ export default function ReformTab({ data }) {
           </div>
         )}
 
-        {behaviouralDim === "wealth_decile" && byWealthDecileBehav.length > 0 && (
-          <div className="h-[380px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={byWealthDecileBehav}>
-                <CartesianGrid strokeDasharray="3 3" stroke={colors.border.light} />
-                <XAxis dataKey="decile" tick={AXIS_STYLE} tickLine={false} />
-                <YAxis tick={AXIS_STYLE} tickLine={false} axisLine={false} tickFormatter={(v) => formatCount(v)} />
-                <Tooltip content={<CustomTooltip formatter={(v) => formatCount(v)} />} />
-                <Bar dataKey="n_entering_work" name="New entrants" fill={colors.primary[600]} radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
         <ChartLogo />
       </div>
 
@@ -553,10 +630,10 @@ export default function ReformTab({ data }) {
       {/* ================================================================ */}
       {counterfactual.name && (
         <>
-          <div className="border-t border-slate-200 pt-4">
+          <div>
             <SectionHeading
               title="Comparison: NICs exemption vs disability benefit cuts"
-              description={<>The government&apos;s <a href="https://www.gov.uk/government/consultations/pathways-to-work-reforming-benefits-and-support-to-get-britain-working-green-paper/spring-statement-2025-health-and-disability-benefit-reforms-impacts" target="_blank" rel="noreferrer" className="underline">proposed disability benefit reforms</a> (PIP eligibility tightening, UC health element freeze, projected to save &pound;4.8bn by 2029/30) compared with the NICs exemption. We approximate the benefit cuts as a 10% reduction in PIP/DLA payments for modelling purposes. <strong>Note:</strong> static NICs exemption figures cover workers who already transitioned from inactivity into work; behavioural figures estimate additional entries from the currently inactive pool. The NICs fiscal cost is net of the fiscal offset from new workers (static cost minus extra tax and benefit savings); the benefit cuts saving is gross. Employment figures for the NICs exemption use participation elasticities (probabilistic); benefit cuts use the same framework but with an income-effect elasticity of 0.22, from <a href="https://doi.org/10.1016/j.jpubeco.2012.01.006" target="_blank" rel="noreferrer" className="underline">Marie &amp; Vall Castell&oacute; (2012)</a>.</>}
+              description={<ComparisonMethodologyToggle counterfactual={counterfactual} year={data?.year} />}
             />
           </div>
 

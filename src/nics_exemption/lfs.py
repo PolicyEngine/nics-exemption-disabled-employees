@@ -5,7 +5,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-
 LFS_INACTIVITY_COLS = ["INCAC051", "INCAC052", "INCAC053", "INCAC054", "INCAC055"]
 
 
@@ -40,17 +39,15 @@ def build_lfs_transition_targets(
         later_active = active[row_idx, last_q + 1 :]
         became_active_afterwards[row_idx] = bool(later_active.any())
         if became_active_afterwards[row_idx]:
-            activity_length_after_inactivity[row_idx] = (
-                active.shape[1] - last_q - 1
-            ) / (active.shape[1] - 1)
+            activity_length_after_inactivity[row_idx] = (active.shape[1] - last_q - 1) / (
+                active.shape[1] - 1
+            )
 
     return pd.DataFrame(
         {
             "was_inactive_at_some_point": was_inactive,
             "became_active_afterwards": became_active_afterwards,
-            "joined_labour_force_recently": (
-                was_inactive & became_active_afterwards
-            ),
+            "joined_labour_force_recently": (was_inactive & became_active_afterwards),
             "activity_length_after_inactivity": activity_length_after_inactivity,
         },
         index=lfs.index,

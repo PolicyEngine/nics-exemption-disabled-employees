@@ -72,14 +72,6 @@ function buildOfficialComparison(summary) {
       note: "Model uses benefit receipt + employment status; official uses Equality Act self-report. FRS collects Equality Act data but PolicyEngine does not yet load it.",
     },
     {
-      metric: "Inactive & disabled",
-      model: summary?.n_inactive_disabled ? formatCount(summary.n_inactive_disabled) : "--",
-      official: "~4.2m",
-      source: "DWP 2025",
-      sourceUrl: "https://www.gov.uk/government/statistics/the-employment-of-disabled-people-2025",
-      note: "",
-    },
-    {
       metric: "Total employer NICs",
       model: summary?.total_employer_nics_bn != null ? formatBn(summary.total_employer_nics_bn) : "--",
       official: "\u00A3145.8bn",
@@ -132,19 +124,17 @@ export default function BaselineTab({ data }) {
         </div>
         <div className="metric-card">
           <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
-            Disabled people
+            Disability benefits spending
           </div>
           <div className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-            {summary?.n_disabled ? formatCount(summary.n_disabled) : "--"}
+            {summary?.total_disability_benefits_bn != null ? formatBn(summary.total_disability_benefits_bn) : "--"}
           </div>
           <div className="mt-1 text-sm text-slate-500">
-            {summary?.n_inactive_disabled
-              ? `${formatCount(summary.n_inactive_disabled)} also economically inactive`
-              : "Including those who are economically inactive"}{" "}
-            (official:{" "}
-            <a href="https://www.gov.uk/government/statistics/the-employment-of-disabled-people-2025" target="_blank" rel="noreferrer" className="underline">
-              ~10.4m Equality Act, DWP
-            </a>)
+            vs £55.1bn official (
+            <a href="https://www.gov.uk/government/consultations/pathways-to-work-reforming-benefits-and-support-to-get-britain-working-green-paper/spring-statement-2025-health-and-disability-benefit-reforms-impacts" target="_blank" rel="noreferrer" className="underline">
+              DWP Spring Statement 2025
+            </a>
+            ) — 2025–26 forecast (£51.2bn in 2024–25). Working-age incapacity &amp; disability benefits only.
           </div>
         </div>
         <div className="metric-card">

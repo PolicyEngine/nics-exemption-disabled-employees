@@ -94,8 +94,8 @@
     ],
     "by_region": [],
     "poverty": {
-      "rate_pct": 8.6,
-      "n_in_poverty": 3949903
+      "rate_pct": 8.5,
+      "n_in_poverty": 3937212
     }
   },
   "nics_exemption": {
@@ -115,13 +115,13 @@
       "behavioural": {
         "low": {
           "elasticity": 0.1,
-          "n_new_entrants": 35297,
-          "fiscal_offset_bn": 0.39,
+          "n_new_entrants": 35422,
+          "fiscal_offset_bn": 0.4,
           "net_cost_bn": 4.67,
           "by_age": [
             {
               "age_group": "16-24",
-              "n_new_entrants": 3229
+              "n_new_entrants": 3275
             },
             {
               "age_group": "25-34",
@@ -129,73 +129,73 @@
             },
             {
               "age_group": "35-49",
-              "n_new_entrants": 7941
+              "n_new_entrants": 7956
             },
             {
               "age_group": "50-64",
-              "n_new_entrants": 16265
+              "n_new_entrants": 16327
             }
           ],
           "n_neets_baseline": 540521,
-          "n_neets_entering_work": 2038
+          "n_neets_entering_work": 2072
         },
         "central": {
           "elasticity": 0.25,
-          "n_new_entrants": 87172,
+          "n_new_entrants": 87483,
           "fiscal_offset_bn": 0.98,
-          "net_cost_bn": 4.09,
+          "net_cost_bn": 4.08,
           "by_age": [
             {
               "age_group": "16-24",
-              "n_new_entrants": 7909
+              "n_new_entrants": 8024
             },
             {
               "age_group": "25-34",
-              "n_new_entrants": 14309
+              "n_new_entrants": 14308
             },
             {
               "age_group": "35-49",
-              "n_new_entrants": 19854
+              "n_new_entrants": 19890
             },
             {
               "age_group": "50-64",
-              "n_new_entrants": 39755
+              "n_new_entrants": 39911
             }
           ],
           "n_neets_baseline": 540521,
-          "n_neets_entering_work": 5094
+          "n_neets_entering_work": 5179
         },
         "high": {
           "elasticity": 0.4,
-          "n_new_entrants": 138567,
-          "fiscal_offset_bn": 1.55,
-          "net_cost_bn": 3.51,
+          "n_new_entrants": 139065,
+          "fiscal_offset_bn": 1.56,
+          "net_cost_bn": 3.5,
           "by_age": [
             {
               "age_group": "16-24",
-              "n_new_entrants": 12427
+              "n_new_entrants": 12611
             },
             {
               "age_group": "25-34",
-              "n_new_entrants": 22894
+              "n_new_entrants": 22893
             },
             {
               "age_group": "35-49",
-              "n_new_entrants": 31766
+              "n_new_entrants": 31825
             },
             {
               "age_group": "50-64",
-              "n_new_entrants": 62926
+              "n_new_entrants": 63175
             }
           ],
           "n_neets_baseline": 540521,
-          "n_neets_entering_work": 8151
+          "n_neets_entering_work": 8287
         }
       },
       "poverty_impact": {
-        "poverty_rate_baseline_pct": 8.6,
+        "poverty_rate_baseline_pct": 8.5,
         "poverty_rate_reform_pct": 8.5,
-        "n_lifted_out_of_poverty": 28164
+        "n_lifted_out_of_poverty": 28229
       },
       "by_age": [
         {
@@ -283,53 +283,53 @@
       "by_income_decile": [
         {
           "group": "1",
-          "n_recently_active": 224341,
+          "n_recently_active": 224448,
           "nics_exemption_cost_bn": 0.23
         },
         {
           "group": "2",
-          "n_recently_active": 92148,
-          "nics_exemption_cost_bn": 0.12
+          "n_recently_active": 101584,
+          "nics_exemption_cost_bn": 0.13
         },
         {
           "group": "3",
-          "n_recently_active": 310566,
-          "nics_exemption_cost_bn": 0.38
+          "n_recently_active": 299082,
+          "nics_exemption_cost_bn": 0.37
         },
         {
           "group": "4",
-          "n_recently_active": 129862,
+          "n_recently_active": 130250,
           "nics_exemption_cost_bn": 0.19
         },
         {
           "group": "5",
-          "n_recently_active": 65254,
-          "nics_exemption_cost_bn": 0.21
+          "n_recently_active": 69064,
+          "nics_exemption_cost_bn": 0.2
         },
         {
           "group": "6",
-          "n_recently_active": 135023,
+          "n_recently_active": 127639,
           "nics_exemption_cost_bn": 0.43
         },
         {
           "group": "7",
-          "n_recently_active": 236705,
+          "n_recently_active": 240622,
           "nics_exemption_cost_bn": 0.42
         },
         {
           "group": "8",
-          "n_recently_active": 77583,
-          "nics_exemption_cost_bn": 0.23
+          "n_recently_active": 79769,
+          "nics_exemption_cost_bn": 0.24
         },
         {
           "group": "9",
-          "n_recently_active": 266319,
+          "n_recently_active": 264798,
           "nics_exemption_cost_bn": 0.88
         },
         {
           "group": "10",
-          "n_recently_active": 146372,
-          "nics_exemption_cost_bn": 1.97
+          "n_recently_active": 146917,
+          "nics_exemption_cost_bn": 1.98
         }
       ],
       "by_wealth_decile": [
@@ -387,105 +387,105 @@
       "by_income_decile_behavioural": [
         {
           "decile": 1,
-          "n_inactive": 1951587,
-          "n_entering_work": 33267
+          "n_inactive": 1951205,
+          "n_entering_work": 33361
         },
         {
           "decile": 2,
-          "n_inactive": 1154058,
-          "n_entering_work": 11790
+          "n_inactive": 1180102,
+          "n_entering_work": 12008
         },
         {
           "decile": 3,
-          "n_inactive": 1199298,
-          "n_entering_work": 11295
+          "n_inactive": 1180490,
+          "n_entering_work": 11145
         },
         {
           "decile": 4,
-          "n_inactive": 1186133,
-          "n_entering_work": 10151
+          "n_inactive": 1207488,
+          "n_entering_work": 10316
         },
         {
           "decile": 5,
-          "n_inactive": 695253,
-          "n_entering_work": 5223
+          "n_inactive": 675510,
+          "n_entering_work": 5138
         },
         {
           "decile": 6,
-          "n_inactive": 494441,
-          "n_entering_work": 3609
+          "n_inactive": 505230,
+          "n_entering_work": 3816
         },
         {
           "decile": 7,
-          "n_inactive": 619798,
-          "n_entering_work": 4327
+          "n_inactive": 615985,
+          "n_entering_work": 4283
         },
         {
           "decile": 8,
-          "n_inactive": 726884,
-          "n_entering_work": 5119
+          "n_inactive": 713355,
+          "n_entering_work": 5028
         },
         {
           "decile": 9,
-          "n_inactive": 325546,
-          "n_entering_work": 1383
+          "n_inactive": 330444,
+          "n_entering_work": 1409
         },
         {
           "decile": 10,
-          "n_inactive": 338217,
-          "n_entering_work": 1009
+          "n_inactive": 331404,
+          "n_entering_work": 981
         }
       ],
       "by_wealth_decile_behavioural": [
         {
           "decile": 1,
           "n_inactive": 2508902,
-          "n_entering_work": 29032
+          "n_entering_work": 29085
         },
         {
           "decile": 2,
           "n_inactive": 741462,
-          "n_entering_work": 7860
+          "n_entering_work": 7847
         },
         {
           "decile": 3,
           "n_inactive": 825521,
-          "n_entering_work": 10093
+          "n_entering_work": 10140
         },
         {
           "decile": 4,
           "n_inactive": 467368,
-          "n_entering_work": 4938
+          "n_entering_work": 4946
         },
         {
           "decile": 5,
           "n_inactive": 444283,
-          "n_entering_work": 5193
+          "n_entering_work": 5199
         },
         {
           "decile": 6,
           "n_inactive": 404021,
-          "n_entering_work": 3175
+          "n_entering_work": 3192
         },
         {
           "decile": 7,
           "n_inactive": 726949,
-          "n_entering_work": 5933
+          "n_entering_work": 5936
         },
         {
           "decile": 8,
           "n_inactive": 566149,
-          "n_entering_work": 4521
+          "n_entering_work": 4539
         },
         {
           "decile": 9,
           "n_inactive": 910459,
-          "n_entering_work": 6481
+          "n_entering_work": 6511
         },
         {
           "decile": 10,
           "n_inactive": 1096099,
-          "n_entering_work": 9948
+          "n_entering_work": 10088
         }
       ]
     },
@@ -495,8 +495,8 @@
       "cut_rate_calibrated_to_bn": 4.8,
       "pip_dla_working_age_total_bn": 27.36,
       "fiscal_saving_bn": 4.8,
-      "n_entering_work": 30591,
-      "n_pushed_into_poverty": 167818,
+      "n_entering_work": 30642,
+      "n_pushed_into_poverty": 167781,
       "n_affected": 3663488
     }
   },

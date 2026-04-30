@@ -17,15 +17,25 @@ from microdf import MicroDataFrame, MicroSeries
 
 from .lfs import build_lfs_transition_targets
 
+# Latest PolicyEngine UK enhanced-FRS microdata, hosted on Hugging Face.
+# Requires `HUGGING_FACE_TOKEN` (with read access to the
+# `policyengine/policyengine-uk-data-private` repo) to be set in the
+# environment before the pipeline is invoked. We pass this URL explicitly to
+# `Microsimulation(...)` so the dataset is fetched directly from HF — there is
+# no local-file fallback. To pin a specific data release, append `@<version>`
+# (e.g. `@1.40.3`); leaving it unpinned tracks whatever PolicyEngine publishes
+# as the latest.
+DATASET_URL = "hf://policyengine/policyengine-uk-data-private/enhanced_frs_2023_24.h5"
+
 
 def run(args: argparse.Namespace) -> None:
     """Run the pipeline end-to-end and write the dashboard JSON."""
     # ── Step 1: Load PolicyEngine baseline ──────────────────────────────────
 
-    print("Step 1: Loading PolicyEngine UK baseline...")
+    print(f"Step 1: Loading PolicyEngine UK baseline from {DATASET_URL} ...")
     from policyengine_uk import Microsimulation
 
-    baseline = Microsimulation()
+    baseline = Microsimulation(dataset=DATASET_URL)
     YEAR = args.year
 
     # ── Step 2: Load and prepare LFS data ──────────────────────────────────
